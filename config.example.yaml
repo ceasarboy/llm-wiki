@@ -1,0 +1,42 @@
+generation:
+  extract_concepts: true
+  extract_entities: true
+  max_retries: 3
+  min_content_length: 3000
+  source_id_min_ratio: 0.6
+  source_id_required: true
+index:
+  chunk_overlap: 50
+  chunk_size: 512
+  collection_name: llm_wiki
+  embedding_model: default
+llm:
+  api_key: <your-api-key>
+  api_url: https://api.deepseek.com/chat/completions
+  max_tokens: 8192
+  model: deepseek-v4-flash
+  temperature: 0.3
+  timeout: 300
+paths:
+  index_dir: <project-root>/index
+  output_dir: <project-root>/generated
+  raw_dir: <obsidian-vault>/raw/papers/markdown
+  templates_dir: <project-root>/templates
+  vault_root: <obsidian-vault>
+  wiki_dir: <obsidian-vault>/wiki
+  work_dir: <project-root>
+review:
+  auto_fix: false
+  detailed_report: true
+scoring:
+  pass_threshold: 7.5
+  weights:
+    accuracy: 0.25
+    completeness: 0.25
+    conflict_handling: 0.15
+    discoverability: 0.15
+    structure: 0.2
+search:
+  keyword_weight: 0.3
+  top_k: 10
+  vector_weight: 0.7

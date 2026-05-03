@@ -1,0 +1,15 @@
+[project]
+name = "llm-wiki-api"
+version = "0.1.0"
+description = "LLM-Wiki Web API Service"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pyyaml>=6.0",
+    "python-multipart>=0.0.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

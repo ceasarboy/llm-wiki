@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+*.egg
+
+# Virtual Environment
+venv/
+venv312/
+.venv/
+env/
+
+# IDE
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ChromaDB
+index/chroma/
+
+# Database
+data/*.db
+
+# Config with secrets
+config.yaml
+
+# Batch state
+batch_state.json
+
+# Generated files
+generated/
+reports/
+
+# Configuration with secrets
+*.env
+!.env.example
+
+# OS
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# Archive (development process files)
+_archive/
+
+# Node
+web/node_modules/
+web/dist/

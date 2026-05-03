@@ -1,0 +1,25 @@
+# LLM-Wiki v3.0 完整依赖列表
+
+# === 后端核心 ===
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+pyyaml>=6.0
+requests>=2.28.0
+
+# === 认证 ===
+bcrypt>=4.0.0
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.5
+
+# === 语义搜索 ===
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+
+# === PDF 转换 ===
+PyMuPDF>=1.23.0
+
+# === 可选：marker-pdf（更高质量的PDF转换，需要GPU） ===
+# marker-pdf>=1.0.0
+
+# === 可选：GPU 加速语义搜索 ===
+# torch>=2.0.0
