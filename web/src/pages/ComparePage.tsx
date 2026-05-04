@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Input, Button, Card, Typography, Space, Progress, List, Tag, Segmented, message } from 'antd'
 import { SwapOutlined, FileTextOutlined } from '@ant-design/icons'
-import ReactMarkdown from 'react-markdown'
 import { createCompare, getSynthesisTask, listSyntheses, getPageDetail } from '../services/api'
+import { renderMarkdown } from '../utils/markdown'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -153,9 +153,7 @@ export default function ComparePage() {
 
       {result && (
         <Card title="对比结果" style={{ marginBottom: 24 }}>
-          <div className="markdown-body" style={{ maxHeight: 600, overflow: 'auto' }}>
-            <ReactMarkdown>{result}</ReactMarkdown>
-          </div>
+          <div className="markdown-body" style={{ maxHeight: 600, overflow: 'auto' }} dangerouslySetInnerHTML={{ __html: renderMarkdown(result) }} />
         </Card>
       )}
 

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Input, Button, Slider, Card, Typography, Space, Progress, List, Tag, message } from 'antd'
 import { SearchOutlined, FileTextOutlined } from '@ant-design/icons'
-import ReactMarkdown from 'react-markdown'
 import { createSurvey, getSynthesisTask, listSyntheses, getPageDetail } from '../services/api'
+import { renderMarkdown } from '../utils/markdown'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -127,9 +127,7 @@ export default function SurveyPage() {
 
       {result && (
         <Card title="综述结果" style={{ marginBottom: 24 }}>
-          <div className="markdown-body" style={{ maxHeight: 600, overflow: 'auto' }}>
-            <ReactMarkdown>{result}</ReactMarkdown>
-          </div>
+          <div className="markdown-body" style={{ maxHeight: 600, overflow: 'auto' }} dangerouslySetInnerHTML={{ __html: renderMarkdown(result) }} />
         </Card>
       )}
 

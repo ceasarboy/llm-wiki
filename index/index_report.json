@@ -1,0 +1,12 @@
+{
+  "indexed_at": "2026-05-04T14:10:00.844248",
+  "collection": "llm_wiki",
+  "embedding_model": "BAAI/bge-large-zh-v1.5",
+  "chunk_size": 512,
+  "chunk_overlap": 50,
+  "previous_count": 0,
+  "final_count": 0,
+  "new_chunks": 0,
+  "documents": 0,
+  "results": []
+}

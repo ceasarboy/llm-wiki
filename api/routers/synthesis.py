@@ -5,7 +5,7 @@ import threading
 from typing import Optional, List
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 
 from api.dependencies import (
@@ -148,7 +148,7 @@ def _run_compare_task(task_id: str, mode: str, items: List[str], max_per_concept
 
 
 @router.post("/survey", response_model=TaskResponse)
-async def create_survey(request: SurveyRequest, user=Depends(require_role("core"))):
+async def create_survey(request: SurveyRequest, user=Depends(require_role(["admin", "core"]))):
     _cleanup_old_tasks()
     task_id = f"survey_{int(time.time())}"
     background_tasks[task_id] = {
@@ -165,7 +165,7 @@ async def create_survey(request: SurveyRequest, user=Depends(require_role("core"
 
 
 @router.post("/compare", response_model=TaskResponse)
-async def create_compare(request: CompareRequest, user=Depends(require_role("core"))):
+async def create_compare(request: CompareRequest, user=Depends(require_role(["admin", "core"]))):
     _cleanup_old_tasks()
     if request.mode not in ("papers", "concepts"):
         raise HTTPException(status_code=400, detail="mode must be 'papers' or 'concepts'")
@@ -188,7 +188,7 @@ async def create_compare(request: CompareRequest, user=Depends(require_role("cor
 
 
 @router.get("/task/{task_id}")
-async def get_task_status(task_id: str, user=Depends(require_role("core"))):
+async def get_task_status(task_id: str, user=Depends(require_role(["admin", "core", "maintainer"]))):
     if task_id not in background_tasks:
         raise HTTPException(status_code=404, detail="Task not found")
     return background_tasks[task_id]
@@ -199,7 +199,7 @@ async def list_syntheses(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     type_filter: Optional[str] = Query(None, alias="type"),
-    user=Depends(require_role("general")),
+    user=Depends(require_role(["admin", "core", "maintainer", "general"])),
 ):
     items = []
     for page_id, info in vault_index.pages.items():
