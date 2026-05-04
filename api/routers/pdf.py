@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from api.dependencies import (
     _safe_filename,
     VAULT_PATH,
+    RAW_DIR,
     get_db_ctx,
     vault_index,
 )
@@ -22,8 +23,8 @@ from api.models import User
 router = APIRouter(prefix="/pdf", tags=["pdf"])
 legacy_router = APIRouter(prefix="/pdfs", tags=["pdfs_legacy"])
 
-PDF_DIR = VAULT_PATH / "raw" / "papers" / "pdf"
-MD_DIR = VAULT_PATH / "raw" / "papers" / "markdown"
+PDF_DIR = RAW_DIR.parent / "pdf"
+MD_DIR = RAW_DIR
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 
 
