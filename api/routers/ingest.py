@@ -14,16 +14,18 @@ from api.dependencies import (
     vault_index,
     RAW_DIR,
     VAULT_PATH,
+    WIKI_PATH,
     RAGTEST_DIR,
     SCRIPTS_DIR,
     get_db_ctx,
 )
+from api.database import PDFFile
 from api.middleware.auth import require_role
 from api.models import User
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
-LOG_FILE = RAGTEST_DIR / "log.md"
+LOG_FILE = RAGTEST_DIR / "ingest.log"
 
 
 class PendingDoc(BaseModel):
@@ -61,11 +63,19 @@ def _get_processed_docs() -> set:
         for match in re.findall(pattern2, content):
             processed.add(match.strip())
 
-    wiki_papers_dir = VAULT_PATH / "wiki" / "papers"
+    wiki_papers_dir = WIKI_PATH / "papers"
     if wiki_papers_dir.exists():
         for paper_file in wiki_papers_dir.glob("*_论文.md"):
             stem = paper_file.stem.replace("_论文", "")
             processed.add(f"raw/papers/markdown/{stem}.md")
+
+    try:
+        with get_db_ctx() as db:
+            for pdf in db.query(PDFFile).all():
+                if pdf.status == "completed":
+                    processed.add(pdf.filename)
+    except Exception:
+        pass
 
     return processed
 
