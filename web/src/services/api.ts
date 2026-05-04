@@ -334,18 +334,24 @@ export function runHealthCheck(layer: string = 'all') {
   })
 }
 
-export function createSurvey(keyword: string, maxPapers = 20) {
+export function createSurvey(items: { id: string; type: string }[], topic = '', prompt = '') {
   return request<{ task_id: string; status: string }>('/synthesis/survey', {
     method: 'POST',
-    body: JSON.stringify({ keyword, max_papers: maxPapers }),
+    body: JSON.stringify({ items, topic, prompt }),
   })
 }
 
-export function createCompare(mode: 'papers' | 'concepts', items: string[], maxPerConcept = 5) {
+export function createCompare(items: { id: string; type: string }[], topic = '', prompt = '') {
   return request<{ task_id: string; status: string }>('/synthesis/compare', {
     method: 'POST',
-    body: JSON.stringify({ mode, items, max_per_concept: maxPerConcept }),
+    body: JSON.stringify({ items, topic, prompt }),
   })
+}
+
+export function searchSynthesisItems(q = '', type?: string, page = 1, pageSize = 50) {
+  const params = new URLSearchParams({ q, page: String(page), page_size: String(pageSize) })
+  if (type) params.set('type', type)
+  return request<{ items: { id: string; title: string; type: string; tags: string[]; updated: string }[]; total: number }>(`/synthesis/search-items?${params}`)
 }
 
 export function getSynthesisTask(taskId: string) {
@@ -356,4 +362,17 @@ export function listSyntheses(page = 1, pageSize = 20, type?: string) {
   const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
   if (type) params.set('type', type)
   return request<{ items: any[]; total: number }>(`/synthesis/list?${params}`)
+}
+
+export function exportSynthesisPdf(pageId: string) {
+  const authStorage = localStorage.getItem('auth-storage')
+  let token = ''
+  if (authStorage) {
+    try {
+      const parsed = JSON.parse(authStorage)
+      token = parsed.state?.token || ''
+    } catch {}
+  }
+  const url = `${API_BASE}/synthesis/export-pdf/${encodeURIComponent(pageId)}?token=${token}`
+  window.open(url, '_blank')
 }

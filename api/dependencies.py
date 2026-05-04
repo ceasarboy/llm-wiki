@@ -44,7 +44,7 @@ class VaultIndex:
 
     def _do_scan(self):
         self.pages = {}
-        self.by_type = {"paper": [], "entity": [], "concept": [], "synthesis": []}
+        self.by_type = {"paper": [], "entity": [], "concept": [], "survey": [], "comparison": []}
 
         type_map = {
             "papers": "paper",
@@ -82,18 +82,25 @@ class VaultIndex:
                 except Exception:
                     pass
 
+                effective_type = type_name
+                if type_name == "synthesis":
+                    if "comparison" in tags:
+                        effective_type = "comparison"
+                    else:
+                        effective_type = "survey"
+
                 page_info = {
                     "id": page_id,
                     "title": str(title),
-                    "type": type_name,
+                    "type": effective_type,
                     "tags": tags if isinstance(tags, list) else [tags],
                     "updated": updated,
                     "file_path": str(md_file),
                 }
 
                 self.pages[page_id] = page_info
-                if type_name in self.by_type:
-                    self.by_type[type_name].append(page_id)
+                if effective_type in self.by_type:
+                    self.by_type[effective_type].append(page_id)
 
         self.last_scan = datetime.now().isoformat()
         print(f"Vault 索引构建完成: {len(self.pages)} 个页面")

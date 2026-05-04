@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { Input, Button, Card, Typography, Space, Progress, List, Tag, Segmented, message } from 'antd'
-import { SwapOutlined, FileTextOutlined } from '@ant-design/icons'
+import { Button, Card, Typography, Space, Progress, List, Tag, Input, message } from 'antd'
+import { SwapOutlined } from '@ant-design/icons'
 import { createCompare, getSynthesisTask, listSyntheses, getPageDetail } from '../services/api'
 import { renderMarkdown } from '../utils/markdown'
+import ItemSelector from '../components/ItemSelector'
+import type { SelectedItem } from '../components/ItemSelector'
 
 const { Title, Text, Paragraph } = Typography
 
 export default function ComparePage() {
-  const [mode, setMode] = useState<'papers' | 'concepts'>('concepts')
-  const [items, setItems] = useState<string[]>(['', ''])
-  const [maxPerConcept, setMaxPerConcept] = useState(5)
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([])
+  const [topic, setTopic] = useState('')
   const [loading, setLoading] = useState(false)
   const [taskId, setTaskId] = useState<string | null>(null)
   const [taskStatus, setTaskStatus] = useState<Record<string, any> | null>(null)
@@ -17,16 +18,16 @@ export default function ComparePage() {
   const [history, setHistory] = useState<any[]>([])
 
   const handleGenerate = async () => {
-    const validItems = items.filter(i => i.trim())
-    if (validItems.length < 2) {
-      message.warning('至少需要 2 个对比项')
+    if (selectedItems.length < 2) {
+      message.warning('至少需要选择 2 个项目进行对比')
       return
     }
     setLoading(true)
     setResult(null)
     setTaskStatus(null)
     try {
-      const res = await createCompare(mode, validItems, maxPerConcept)
+      const items = selectedItems.map(s => ({ id: s.id, type: s.type }))
+      const res = await createCompare(items, topic)
       setTaskId(res.task_id)
       pollTask(res.task_id)
     } catch (e: any) {
@@ -78,53 +79,35 @@ export default function ComparePage() {
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <Title level={2}>⚖️ 对比分析</Title>
       <Paragraph type="secondary">
-        选择多篇论文或多个概念，系统将自动生成对比矩阵和场景化建议。
+        从知识库中选择原文、论文、实体或概念，系统将自动生成对比矩阵和场景化建议。
       </Paragraph>
 
       <Card style={{ marginBottom: 24 }}>
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <div>
-            <Text strong>对比模式</Text>
-            <div style={{ marginTop: 8 }}>
-              <Segmented
-                options={[
-                  { label: '概念对比', value: 'concepts' },
-                  { label: '论文对比', value: 'papers' },
-                ]}
-                value={mode}
-                onChange={v => setMode(v as 'papers' | 'concepts')}
-              />
-            </div>
+            <Text strong>对比主题（可选）</Text>
+            <Input
+              size="large"
+              placeholder="例如：Chiplet互连方案对比、3D集成 vs 2.5D..."
+              value={topic}
+              onChange={e => setTopic(e.target.value)}
+              style={{ marginTop: 8 }}
+            />
           </div>
 
           <div>
-            <Text strong>{mode === 'concepts' ? '概念关键词' : '论文 ID/标题'}</Text>
-            {items.map((item, idx) => (
-              <Input
-                key={idx}
-                placeholder={mode === 'concepts' ? `概念 ${idx + 1}，如：Chiplet` : `论文 ${idx + 1} 的 ID 或标题`}
-                value={item}
-                onChange={e => {
-                  const newItems = [...items]
-                  newItems[idx] = e.target.value
-                  setItems(newItems)
-                }}
-                style={{ marginTop: 8 }}
+            <Text strong>选择知识库项目（至少 2 个）</Text>
+            <div style={{ marginTop: 8 }}>
+              <ItemSelector
+                selected={selectedItems}
+                onSelectedChange={setSelectedItems}
+                minItems={2}
               />
-            ))}
-            <Button type="dashed" size="small" style={{ marginTop: 8 }} onClick={() => setItems([...items, ''])}>
-              + 添加对比项
-            </Button>
+            </div>
           </div>
 
-          {mode === 'concepts' && (
-            <div>
-              <Text strong>每个概念最大论文数: {maxPerConcept}</Text>
-            </div>
-          )}
-
           <Button type="primary" size="large" loading={loading} onClick={handleGenerate} icon={<SwapOutlined />}>
-            生成对比分析
+            生成对比分析（已选 {selectedItems.length} 项）
           </Button>
         </Space>
       </Card>
@@ -132,7 +115,7 @@ export default function ComparePage() {
       {taskStatus && loading && (
         <Card style={{ marginBottom: 24 }}>
           <Space direction="vertical" style={{ width: '100%' }}>
-            <Text>状态: {taskStatus.status === 'generating' ? '生成中...' : taskStatus.status === 'reviewing' ? '审核中...' : '保存中...'}</Text>
+            <Text>状态: {taskStatus.status === 'collecting' ? '收集内容...' : taskStatus.status === 'generating' ? '生成中...' : taskStatus.status === 'reviewing' ? '审核中...' : '保存中...'}</Text>
             <Progress percent={taskStatus.progress || 0} status="active" />
           </Space>
         </Card>

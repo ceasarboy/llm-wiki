@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-3.1-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.5-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/python-3.10+-yellow?style=for-the-badge&logo=python" alt="Python">
   <img src="https://img.shields.io/badge/react-18+-61DAFB?style=for-the-badge&logo=react" alt="React">
@@ -34,7 +34,9 @@ flowchart LR
     D -->|"✅ Yes"| E["🔗 Deduplication"]
     D -->|"❌ No<br/>Auto-fix ×3"| C
     E -->|"Merge"| F["📚 Knowledge Base"]
-    F -->|"ChromaDB Index"| G["🔍 RAG Search"]
+    F -->|"Agent_S<br/>Survey"| G1["📊 综述报告"]
+    F -->|"Agent_C<br/>Compare"| G2["🔬 对比分析"]
+    F -->|"ChromaDB Index"| H["🔍 RAG Search"]
 ```
 
 ---
@@ -67,6 +69,8 @@ graph TD
         P2["Agent_G<br/>DeepSeek-v4"]
         P3["Agent_R<br/>5-Dimension Review"]
         P4["Merge<br/>LLM Dedup"]
+        P5["Agent_S<br/>Surveys"]
+        P6["Agent_C<br/>Comparisons"]
     end
 
     subgraph Storage["💾 Storage Layer"]
@@ -88,8 +92,10 @@ graph TD
 |-------|-------------|----------------|
 | **1. PDF → Markdown** | Extracts text, formulas, tables, images via Marker engine | Preserves mathematical content (KaTeX) and visual data |
 | **2. Agent_G Generate** | LLM generates 5 page types: Paper, Entity, Concept, Summary, Synthesis | Extracts not just "what the paper says" but *who, what concepts, and how they connect* |
-| **3. Agent_R Review** | 5-dimension scoring: Completeness, Accuracy, Structure, Discoverability, Conflict | Every page must score ≥ 7.5/10 or auto-retry (up to 3 fix cycles) |
+| **3. Agent_R Review** | 4-dimension scoring: Completeness, Accuracy, Structure, Readability | Every page must score ≥ 7.5/10 or auto-retry (up to 3 fix cycles) |
 | **4. Merge Dedup** | LLM-powered entity/concept deduplication with similarity scoring | New papers enrich existing knowledge instead of fragmenting it |
+| **5. Agent_S Survey** | LLM generates comprehensive survey reports from multiple documents | Custom prompt support + self-evaluation with auto-retry below 7.5 |
+| **6. Agent_C Compare** | LLM generates multi-document comparison analyses with tables | Side-by-side comparison of datasets, methods, architectures — exportable as PDF |
 
 ---
 

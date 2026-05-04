@@ -25,37 +25,40 @@ INDEX_DIR = Path(PATHS.get("index_dir", "E:/ragtest/index"))
 CHROMA_PERSIST_DIR = INDEX_DIR / "chroma"
 COLLECTION_NAME = "llm_wiki"
 
-SURVEY_SYSTEM_PROMPT = """你是一位资深学术综述撰写专家。你的任务是根据提供的多篇论文内容，生成一份结构化的学术综述。
+SURVEY_SYSTEM_PROMPT = """你是一位行业专家，严谨、细致。请根据用户的提示词和提供的文档内容撰写报告。
 
-【输出格式要求】
-你必须严格按照以下结构输出，每个章节都必须包含：
+【格式要求】
+1. 标题：使用 # 一级标题
+2. 章节：使用 ## 二级标题组织内容
+3. 参考文献：文末必须列出参考文献章节，格式如下：
+   ## 参考文献
+   - [1] 文档标题
+   - [2] 文档标题
+4. 引用标注：引用文档内容时标注 [Source: 文档标题] 或 [Source: 文档标题, 章节/页码]
+5. 内容长度：建议大于等于2000字，小于等于5000字
+6. 使用中文撰写，语言自然流畅，避免生硬的模板化表达
+7. 逻辑清晰，章节结构合理，保持学术严谨性的同时，让文章可读性强
 
-# {主题} - 综述分析
+【自评机制】
+完成报告后，请进行自我审核并评分（满分10分）：
 
-## 时间线
-该方向的演进历史，标注关键论文和时间节点。每条事实后标注 [Source: 论文标题]
+| 维度 | 权重 | 评分标准 |
+|------|------|---------|
+| 完整性 | 30% | 内容充实，覆盖主题各方面 |
+| 准确性 | 30% | Source 标注覆盖率≥80% |
+| 结构性 | 20% | 有标题、章节、参考文献 |
+| 可读性 | 20% | 语言流畅，逻辑清晰 |
 
-## 关键突破
-里程碑论文及其贡献，含数据支撑。每条事实后标注 [Source: 论文标题]
+在报告末尾添加自评结果：
+---
+**自评得分：X.X/10**
+- 完整性：X/10
+- 准确性：X/10
+- 结构性：X/10
+- 可读性：X/10
+---
 
-## 当前 SOTA
-目前最先进的方法和结果。每条事实后标注 [Source: 论文标题]
-
-## 开放问题
-尚未解决的挑战和未来方向。每条事实后标注 [Source: 论文标题]
-
-## 相关实体
-该方向的关键人物、机构、技术，用列表形式
-
-## 参考文献
-带 Source ID 的引用列表
-
-【重要规则】
-1. 每条事实性陈述必须标注 [Source: 论文标题]
-2. 信息保留率 ≥80%，不要过度摘要
-3. 时间线按时间顺序排列
-4. 关键突破需要包含具体数据
-5. 开放问题需要跨论文综合分析"""
+如果综合得分低于7.5，请重新优化报告后再输出。"""
 
 
 def collect_related_papers(keyword: str, max_papers: int = 20) -> List[Dict]:
@@ -124,7 +127,7 @@ def collect_related_papers(keyword: str, max_papers: int = 20) -> List[Dict]:
 
 
 def generate_survey(keyword: str, max_papers: int = 20) -> Optional[str]:
-    """生成综述"""
+    """生成综述（关键词模式，保留兼容）"""
     print(f"\n{'='*60}")
     print(f"Agent-S: 开始生成综述 — 关键词: {keyword}")
     print(f"{'='*60}")
@@ -139,21 +142,58 @@ def generate_survey(keyword: str, max_papers: int = 20) -> Optional[str]:
     paper_count = len([p for p in papers if p["type"] == "paper"])
     print(f"  找到 {len(papers)} 个相关文档 (其中 {paper_count} 篇论文)")
 
+    return _generate_from_collected(papers, keyword)
+
+
+def generate_survey_from_items(items: List[Dict], topic: str = "", user_prompt: str = "") -> Optional[str]:
+    """从选中的项目生成综述"""
+    print(f"\n{'='*60}")
+    print(f"Agent-S: 开始生成综述 — 选中 {len(items)} 个项目")
+    print(f"{'='*60}")
+
+    if not items:
+        print("  未选中任何项目")
+        return None
+
+    type_counts = {}
+    for item in items:
+        t = item.get("type", "unknown")
+        type_counts[t] = type_counts.get(t, 0) + 1
+    print(f"  项目类型分布: {type_counts}")
+
+    return _generate_from_collected(items, topic, user_prompt)
+
+
+def _generate_from_collected(items: List[Dict], topic: str = "", user_prompt: str = "") -> Optional[str]:
+    """从收集的内容生成综述（内部共用）"""
     print(f"\n[2/3] 构建综述 Prompt...")
-    papers_content = ""
-    for i, paper in enumerate(papers, 1):
-        papers_content += f"\n---\n### 文档 {i}: {paper['title']} (ID: {paper['id']})\n\n{paper['content']}\n"
+    
+    doc_titles = [item['title'] for item in items]
+    items_content = ""
+    for i, item in enumerate(items, 1):
+        type_label = {"paper": "论文", "entity": "实体", "concept": "概念", "raw": "原文", "synthesis": "综合"}.get(item.get("type", ""), "文档")
+        items_content += f"\n---\n### {type_label} {i}: {item['title']}\n\n{item['content']}\n"
 
-    prompt = f"""请根据以下 {len(papers)} 篇相关论文，生成关于「{keyword}」的学术综述。
+    doc_list = "\n".join([f"- {title}" for title in doc_titles])
+    
+    if user_prompt:
+        prompt = f"""{user_prompt}
 
-【论文内容】
-{papers_content}
+【参考文档】
+{items_content}
 
-【要求】
-1. 严格按照指定格式输出
-2. 每条事实后标注 [Source: 论文标题]
-3. 综合多篇论文的观点，不要只依赖单篇
-4. 信息保留率 ≥80%
+【文档列表】
+{doc_list}
+"""
+    else:
+        display_topic = topic or "选定主题"
+        prompt = f"""请根据以下 {len(items)} 篇文档，撰写关于「{display_topic}」的综述报告。
+
+【文档内容】
+{items_content}
+
+【文档列表】
+{doc_list}
 """
 
     print(f"\n[3/3] 调用 LLM 生成综述...")
@@ -161,7 +201,7 @@ def generate_survey(keyword: str, max_papers: int = 20) -> Optional[str]:
         prompt=prompt,
         system_prompt=SURVEY_SYSTEM_PROMPT,
         temperature=0.3,
-        max_tokens=8000
+        max_tokens=10000
     )
 
     if not result:
@@ -172,27 +212,35 @@ def generate_survey(keyword: str, max_papers: int = 20) -> Optional[str]:
     return result
 
 
+def _extract_title_from_content(content: str) -> str:
+    m = re.search(r'^#\s+(.+)$', content, re.MULTILINE)
+    if m:
+        return m.group(1).strip()
+    return ""
+
+
 def save_survey(keyword: str, content: str) -> Path:
     """保存综述到 wiki/syntheses/ 目录"""
     syntheses_dir = WIKI_DIR / "syntheses"
     syntheses_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_name = re.sub(r'[^\w\-\u4e00-\u9fff]', '_', keyword)
+    display_title = _extract_title_from_content(content) or keyword or "综述分析"
+    safe_name = re.sub(r'[^\w\-\u4e00-\u9fff]', '_', display_title)[:80]
     filename = f"{safe_name}_综述.md"
     filepath = syntheses_dir / filename
 
     now = datetime.now().strftime("%Y-%m-%d")
     frontmatter = f"""---
-title: "{keyword} - 综述分析"
+title: "{display_title}"
 type: synthesis
-tags: [survey, "{keyword}"]
+tags: [survey, "{display_title}"]
 source: []
 created: "{now}"
 updated: "{now}"
 status: draft
 synthesis_date: "{now}"
 source_docs: []
-query_origin: "{keyword}"
+query_origin: "{display_title}"
 confidence: medium
 ---
 

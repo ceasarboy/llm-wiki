@@ -21,9 +21,8 @@ SCORING = get_scoring_config()
 SURVEY_RUBRIC = {
     "completeness": {"weight": 0.30, "name": "完整性"},
     "accuracy": {"weight": 0.30, "name": "准确性"},
-    "structure": {"weight": 0.20, "name": "结构规范性"},
-    "discoverability": {"weight": 0.10, "name": "可发现性"},
-    "conflict_handling": {"weight": 0.10, "name": "冲突标注"},
+    "structure": {"weight": 0.20, "name": "结构性"},
+    "readability": {"weight": 0.20, "name": "可读性"},
 }
 
 PASS_THRESHOLD = 7.5
@@ -45,14 +44,12 @@ def score_survey_completeness(body: str) -> Tuple[float, List[str]]:
     issues = []
     score = 10.0
 
-    required_sections = ["时间线", "关键突破", "当前 SOTA", "开放问题"]
-    for section in required_sections:
-        if section not in body:
-            issues.append(f"缺失章节: {section}")
-            score -= 2.0
+    if len(body) < 2000:
+        issues.append(f"内容过短 ({len(body)} 字符)，建议≥2000字")
+        score -= 2.0
 
-    if len(body) < 3000:
-        issues.append(f"内容过短 ({len(body)} 字符)，综述应≥3000字")
+    if "## 参考文献" not in body and "##参考文献" not in body:
+        issues.append("缺少参考文献章节")
         score -= 2.0
 
     return max(0, score), issues
@@ -88,39 +85,21 @@ def score_survey_structure(frontmatter: Dict, body: str) -> Tuple[float, List[st
         issues.append("缺少 Frontmatter")
         score -= 3.0
     else:
-        for field in ["title", "type", "tags", "query_origin"]:
+        for field in ["title", "type", "tags"]:
             if field not in frontmatter:
                 issues.append(f"Frontmatter 缺少字段: {field}")
                 score -= 0.5
 
-    if "## 时间线" not in body:
-        issues.append("未使用标准章节格式")
-        score -= 1.0
-
     return max(0, score), issues
 
 
-def score_survey_discoverability(body: str) -> Tuple[float, List[str]]:
+def score_survey_readability(body: str) -> Tuple[float, List[str]]:
     issues = []
     score = 10.0
 
-    links = re.findall(r'\[\[([^\]]+)\]\]', body)
-    if len(links) < 3:
-        issues.append(f"交叉链接过少 ({len(links)}个)，建议添加概念/实体链接")
-        score -= 2.0
-
-    return max(0, score), issues
-
-
-def score_survey_conflict(body: str) -> Tuple[float, List[str]]:
-    issues = []
-    score = 10.0
-
-    conflict_markers = re.findall(r'\[Conflict:', body)
-    contradictory_words = re.findall(r'然而|但是|相反|矛盾|冲突|不一致', body)
-
-    if contradictory_words and not conflict_markers:
-        issues.append(f"检测到 {len(contradictory_words)} 处转折/矛盾表述，但未标记 [Conflict:]")
+    paragraphs = [p for p in body.split('\n\n') if p.strip() and not p.startswith('#')]
+    if len(paragraphs) < 3:
+        issues.append("段落过少，建议增加内容分段")
         score -= 2.0
 
     return max(0, score), issues
@@ -139,8 +118,7 @@ def review_survey(content: str, page_path: str = "") -> SurveyReviewResult:
         "completeness": lambda: score_survey_completeness(body),
         "accuracy": lambda: score_survey_accuracy(body),
         "structure": lambda: score_survey_structure(frontmatter, body),
-        "discoverability": lambda: score_survey_discoverability(body),
-        "conflict_handling": lambda: score_survey_conflict(body),
+        "readability": lambda: score_survey_readability(body),
     }
 
     for dim, func in scoring_funcs.items():

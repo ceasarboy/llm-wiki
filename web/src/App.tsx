@@ -16,7 +16,6 @@ import SettingsPage from './pages/SettingsPage'
 import GraphPage from './pages/GraphPage'
 import PDFReaderPage from './pages/PDFReaderPage'
 import SurveyPage from './pages/SurveyPage'
-import ComparePage from './pages/ComparePage'
 import PrivateRoute from './components/PrivateRoute'
 
 const router = createBrowserRouter([
@@ -46,7 +45,6 @@ const router = createBrowserRouter([
       { path: 'graph', element: <GraphPage /> },
       { path: 'pdfs', element: <PDFReaderPage /> },
       { path: 'survey', element: <SurveyPage /> },
-      { path: 'compare', element: <ComparePage /> },
       {
         path: 'import',
         element: (

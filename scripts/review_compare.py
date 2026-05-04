@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Agent-RC: 对比审核模块
-按5维度评分标准审核对比分析页面
+按4维度评分标准审核对比分析页面
 """
 
 import sys
@@ -21,9 +21,8 @@ SCORING = get_scoring_config()
 COMPARE_RUBRIC = {
     "completeness": {"weight": 0.30, "name": "完整性"},
     "accuracy": {"weight": 0.30, "name": "准确性"},
-    "structure": {"weight": 0.20, "name": "结构规范性"},
-    "discoverability": {"weight": 0.10, "name": "可发现性"},
-    "conflict_handling": {"weight": 0.10, "name": "矛盾标注"},
+    "structure": {"weight": 0.20, "name": "结构性"},
+    "readability": {"weight": 0.20, "name": "可读性"},
 }
 
 PASS_THRESHOLD = 7.5
@@ -45,25 +44,17 @@ def score_compare_completeness(body: str) -> Tuple[float, List[str]]:
     issues = []
     score = 10.0
 
-    required_sections = ["对比矩阵", "方案详述", "场景化建议"]
-    for section in required_sections:
-        if section not in body:
-            issues.append(f"缺失章节: {section}")
-            score -= 2.0
-
-    matrix_match = re.search(r'## 对比矩阵\n(.*?)(?=\n## |\Z)', body, re.DOTALL)
-    if matrix_match:
-        matrix_text = matrix_match.group(1)
-        data_rows = [line for line in matrix_text.split('\n') if line.strip().startswith('|') and not re.match(r'^\|[\s\-|]+\|$', line.strip())]
-        if len(data_rows) < 5:
-            issues.append(f"对比矩阵维度不足 ({len(data_rows)}行数据)，建议≥5个维度")
-            score -= 1.5
-    else:
-        issues.append("未找到对比矩阵表格")
+    if len(body) < 2000:
+        issues.append(f"内容过短 ({len(body)} 字符)，建议≥2000字")
         score -= 2.0
 
-    if len(body) < 2000:
-        issues.append(f"内容过短 ({len(body)} 字符)")
+    if "## 参考文献" not in body and "##参考文献" not in body:
+        issues.append("缺少参考文献章节")
+        score -= 2.0
+
+    table_lines = [l for l in body.split('\n') if '|' in l and not l.strip().startswith('|--')]
+    if len(table_lines) < 3:
+        issues.append("对比矩阵表格不完整")
         score -= 1.5
 
     return max(0, score), issues
@@ -74,12 +65,19 @@ def score_compare_accuracy(body: str) -> Tuple[float, List[str]]:
     score = 10.0
 
     source_count = len(re.findall(r'\[Source:', body))
-    if source_count < 5:
-        issues.append(f"Source 标注过少 ({source_count}个)，对比数据应有出处")
-        score -= 3.0
-    elif source_count < 10:
-        issues.append(f"Source 标注偏少 ({source_count}个)，建议补充")
-        score -= 1.0
+    fact_sentences = len(re.findall(r'[。！？]', body))
+
+    if fact_sentences > 0:
+        coverage = source_count / fact_sentences
+        if coverage < 0.5:
+            issues.append(f"Source ID 覆盖率过低 ({coverage:.0%})，应≥50%")
+            score -= 3.0
+        elif coverage < 0.8:
+            issues.append(f"Source ID 覆盖率偏低 ({coverage:.0%})，建议补充")
+            score -= 1.0
+    else:
+        issues.append("未检测到事实性陈述")
+        score -= 2.0
 
     return max(0, score), issues
 
@@ -97,39 +95,16 @@ def score_compare_structure(frontmatter: Dict, body: str) -> Tuple[float, List[s
                 issues.append(f"Frontmatter 缺少字段: {field}")
                 score -= 0.5
 
-    if "## 对比矩阵" not in body:
-        issues.append("未使用标准章节格式")
-        score -= 1.0
-
-    table_lines = [l for l in body.split('\n') if '|' in l]
-    if len(table_lines) < 3:
-        issues.append("对比矩阵表格格式不完整")
-        score -= 1.5
-
     return max(0, score), issues
 
 
-def score_compare_discoverability(body: str) -> Tuple[float, List[str]]:
+def score_compare_readability(body: str) -> Tuple[float, List[str]]:
     issues = []
     score = 10.0
 
-    links = re.findall(r'\[\[([^\]]+)\]\]', body)
-    if len(links) < 2:
-        issues.append(f"关联论文链接过少 ({len(links)}个)")
-        score -= 2.0
-
-    return max(0, score), issues
-
-
-def score_compare_conflict(body: str) -> Tuple[float, List[str]]:
-    issues = []
-    score = 10.0
-
-    conflict_markers = re.findall(r'\[Conflict:', body)
-    contradictory_words = re.findall(r'然而|但是|相反|矛盾|冲突|不一致', body)
-
-    if contradictory_words and not conflict_markers:
-        issues.append(f"检测到 {len(contradictory_words)} 处矛盾表述，但未标记 [Conflict:]")
+    paragraphs = [p for p in body.split('\n\n') if p.strip() and not p.startswith('#')]
+    if len(paragraphs) < 3:
+        issues.append("段落过少，建议增加内容分段")
         score -= 2.0
 
     return max(0, score), issues
@@ -148,8 +123,7 @@ def review_compare(content: str, page_path: str = "") -> CompareReviewResult:
         "completeness": lambda: score_compare_completeness(body),
         "accuracy": lambda: score_compare_accuracy(body),
         "structure": lambda: score_compare_structure(frontmatter, body),
-        "discoverability": lambda: score_compare_discoverability(body),
-        "conflict_handling": lambda: score_compare_conflict(body),
+        "readability": lambda: score_compare_readability(body),
     }
 
     for dim, func in scoring_funcs.items():
