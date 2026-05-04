@@ -62,7 +62,7 @@ async def run_health_check(layer: str = "all"):
     from scripts.lint import WikiLinter
 
     def _run_lint():
-        linter = WikiLinter(str(VAULT_PATH))
+        linter = WikiLinter(str(VAULT_PATH), wiki_path=str(WIKI_PATH))
         return linter.run_all_checks(layer=layer)
 
     loop = asyncio.get_event_loop()
