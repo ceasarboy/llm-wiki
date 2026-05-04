@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { Layout, Menu, Switch, Typography, Dropdown, Avatar, Button } from 'antd'
-import { HomeOutlined, BookOutlined, QuestionCircleOutlined, DashboardOutlined, UserOutlined, TeamOutlined, FileTextOutlined, LogoutOutlined, BulbOutlined, BulbFilled, UploadOutlined, ApartmentOutlined, SettingOutlined, FilePdfOutlined, PlayCircleOutlined } from '@ant-design/icons'
+import { HomeOutlined, BookOutlined, QuestionCircleOutlined, DashboardOutlined, UserOutlined, TeamOutlined, FileTextOutlined, LogoutOutlined, BulbOutlined, BulbFilled, UploadOutlined, ApartmentOutlined, SettingOutlined, FilePdfOutlined, PlayCircleOutlined, ReadOutlined, SwapOutlined } from '@ant-design/icons'
 import { useAppStore } from '../stores/useAppStore'
 import { useAuthStore, canManageUsers, canViewLogs, hasRole } from '../stores/useAuthStore'
 import { logout as logoutApi } from '../services/authApi'
@@ -36,6 +36,8 @@ export default function MainLayout() {
   if (hasRole(user, ['admin', 'core'])) {
     menuItems.push({ key: '/import', icon: <UploadOutlined />, label: <Link to="/import">论文导入</Link> })
     menuItems.push({ key: '/generate', icon: <PlayCircleOutlined />, label: <Link to="/generate">论文生成</Link> })
+    menuItems.push({ key: '/survey', icon: <ReadOutlined />, label: <Link to="/survey">综述生成</Link> })
+    menuItems.push({ key: '/compare', icon: <SwapOutlined />, label: <Link to="/compare">对比分析</Link> })
   }
 
   if (canManageUsers(user)) {

@@ -333,3 +333,27 @@ export function runHealthCheck(layer: string = 'all') {
     method: 'POST',
   })
 }
+
+export function createSurvey(keyword: string, maxPapers = 20) {
+  return request<{ task_id: string; status: string }>('/synthesis/survey', {
+    method: 'POST',
+    body: JSON.stringify({ keyword, max_papers: maxPapers }),
+  })
+}
+
+export function createCompare(mode: 'papers' | 'concepts', items: string[], maxPerConcept = 5) {
+  return request<{ task_id: string; status: string }>('/synthesis/compare', {
+    method: 'POST',
+    body: JSON.stringify({ mode, items, max_per_concept: maxPerConcept }),
+  })
+}
+
+export function getSynthesisTask(taskId: string) {
+  return request<Record<string, any>>(`/synthesis/task/${taskId}`)
+}
+
+export function listSyntheses(page = 1, pageSize = 20, type?: string) {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  if (type) params.set('type', type)
+  return request<{ items: any[]; total: number }>(`/synthesis/list?${params}`)
+}

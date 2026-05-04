@@ -27,6 +27,7 @@ from api.routers import (
     config_router,
     graph_router,
     maintenance_router,
+    synthesis_router,
 )
 
 app = FastAPI(
@@ -55,6 +56,7 @@ app.include_router(ingest_router, prefix="/api")
 app.include_router(config_router, prefix="/api")
 app.include_router(graph_router, prefix="/api")
 app.include_router(maintenance_router, prefix="/api")
+app.include_router(synthesis_router, prefix="/api")
 
 
 async def open_browser():
