@@ -6,6 +6,7 @@ qmd 混合检索脚本 (简化版)
 """
 
 import os
+import sys
 import json
 import argparse
 from pathlib import Path

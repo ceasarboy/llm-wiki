@@ -6,6 +6,7 @@ import threading
 import yaml
 from pathlib import Path
 from datetime import datetime
+from contextlib import contextmanager
 from fastapi import HTTPException
 from typing import Dict
 
@@ -102,6 +103,7 @@ vault_index = VaultIndex()
 background_tasks: Dict[str, dict] = {}
 
 
+@contextmanager
 def get_db_ctx():
     from api.database import SessionLocal
 
