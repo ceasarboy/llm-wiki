@@ -70,7 +70,12 @@ async def get_config(
     )
 
 
-@router.put("")
+class ConfigUpdateResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.put("", response_model=ConfigUpdateResponse)
 async def update_config(
     update: ConfigUpdateRequest,
     current_user: User = Depends(require_role(["admin"])),

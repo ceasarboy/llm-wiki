@@ -57,7 +57,8 @@ async def rescan_vault():
 
 @router.post("/health-check")
 async def run_health_check(layer: str = "all"):
-    sys.path.insert(0, str(SCRIPTS_DIR))
+    if str(SCRIPTS_DIR) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS_DIR))
     from scripts.lint import WikiLinter
 
     def _run_lint():
@@ -245,7 +246,8 @@ async def regenerate_paper(
 
     def _run_regen():
         try:
-            sys.path.insert(0, str(SCRIPTS_DIR))
+            if str(SCRIPTS_DIR) not in sys.path:
+                sys.path.insert(0, str(SCRIPTS_DIR))
             from batch import process_document, persist_to_wiki
             import shutil
 
@@ -467,7 +469,6 @@ async def rebuild_chromadb(
     current_user: User = Depends(require_role(["admin"])),
 ):
     import shutil
-    import sys as _sys
 
     chroma_dir = RAGTEST_DIR / "index" / "chroma"
     if not chroma_dir.exists():
@@ -475,7 +476,8 @@ async def rebuild_chromadb(
 
     shutil.rmtree(str(chroma_dir), ignore_errors=True)
 
-    _sys.path.insert(0, str(SCRIPTS_DIR))
+    if str(SCRIPTS_DIR) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS_DIR))
     from indexer import WikiIndexer
 
     indexer = WikiIndexer(

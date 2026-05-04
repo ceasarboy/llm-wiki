@@ -1,6 +1,7 @@
 """搜索与查询 API"""
 
 import re
+import sys
 import asyncio
 from typing import Optional, List
 from pathlib import Path
@@ -138,8 +139,9 @@ async def search(q: str = "", type: Optional[str] = None):
 @router.post("/query", response_model=QueryResponse)
 async def query(request: QueryRequest):
     try:
-        sys_path = __import__("sys")
-        sys_path.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
+        scripts_dir = str(Path(__file__).parent.parent.parent / "scripts")
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
         from qmd_search_simple import hybrid_search
 
         search_results = hybrid_search(request.question, top_k=30)

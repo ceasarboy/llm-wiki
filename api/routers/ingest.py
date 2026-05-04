@@ -100,8 +100,6 @@ async def run_ingest(
     limit: int = 10,
     current_user: User = Depends(require_role(["admin", "maintainer"])),
 ):
-    import sys as _sys
-
     log_file = RAGTEST_DIR / "ingest.log"
     log_file.write_text(f"开始导入 {limit} 篇论文...\n", encoding="utf-8")
 
@@ -115,7 +113,7 @@ async def run_ingest(
 
         process = subprocess.Popen(
             [
-                _sys.executable,
+                sys.executable,
                 str(SCRIPTS_DIR / "batch.py"),
                 "--batch-size",
                 str(limit),

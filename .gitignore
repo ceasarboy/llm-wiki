@@ -31,9 +31,11 @@ config.yaml
 # Batch state
 batch_state.json
 
-# Runtime logs
+# Runtime logs (only common log filenames on root)
 ingest.log
-*.log
+error.log
+debug.log
+server.log
 
 # QMD index (runtime)
 index/qmd_index.json

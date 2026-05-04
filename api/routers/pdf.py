@@ -2,7 +2,7 @@
 
 import shutil
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
@@ -38,10 +38,28 @@ async def upload_pdf(
     current_user: User = Depends(require_role(["admin", "maintainer"])),
 ):
     if not file.filename or not file.filename.endswith(".pdf"):
+        try:
+            with get_db_ctx() as db:
+                from api.services.log_service import LogService
+                LogService.log_system_event(
+                    db, "WARNING", "pdf", "upload_reject",
+                    f"非PDF文件被拒绝: {file.filename}"
+                )
+        except Exception:
+            pass
         raise HTTPException(status_code=400, detail="只支持PDF文件")
 
     contents = await file.read()
     if len(contents) > MAX_UPLOAD_SIZE:
+        try:
+            with get_db_ctx() as db:
+                from api.services.log_service import LogService
+                LogService.log_system_event(
+                    db, "WARNING", "pdf", "upload_reject",
+                    f"文件过大被拒绝: {file.filename}, 大小={len(contents)}"
+                )
+        except Exception:
+            pass
         raise HTTPException(status_code=413, detail=f"文件过大，最大允许 50MB")
 
     PDF_DIR.mkdir(parents=True, exist_ok=True)
@@ -139,7 +157,7 @@ async def convert_pdf(
             if success:
                 pdf_file.status = "completed"
                 pdf_file.markdown_path = markdown_path
-                pdf_file.converted_at = datetime.now(timezone.utc)
+                pdf_file.converted_at = datetime.now()
                 db.commit()
 
                 from api.services.log_service import LogService

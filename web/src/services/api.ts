@@ -218,6 +218,13 @@ export async function uploadPDF(file: File): Promise<PDFUploadResponse> {
   })
   
   if (!res.ok) {
+    if (res.status === 401 && !isRedirecting) {
+      isRedirecting = true
+      localStorage.removeItem('auth-storage')
+      window.location.href = '/login'
+      setTimeout(() => { isRedirecting = false }, 1000)
+      throw new Error('登录已过期，请重新登录')
+    }
     const errorData = await res.json().catch(() => ({}))
     throw new Error(errorData.detail || `Upload failed: ${res.status}`)
   }
