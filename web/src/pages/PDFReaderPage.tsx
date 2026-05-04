@@ -122,7 +122,7 @@ export default function PDFReaderPage() {
               </Text>
               <Tooltip title="在新窗口打开">
                 <a
-                  href={`/api/pdfs/${selectedPdf}`}
+                  href={`/api/pdf/serve/${encodeURIComponent(selectedPdf)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[var(--accent)] hover:underline text-sm"
@@ -133,7 +133,7 @@ export default function PDFReaderPage() {
             </div>
             <div className="flex-1">
               <iframe
-                src={`/api/pdfs/${selectedPdf}`}
+                src={`/api/pdf/serve/${encodeURIComponent(selectedPdf)}`}
                 className="w-full h-full border-0"
                 title="PDF Viewer"
               />

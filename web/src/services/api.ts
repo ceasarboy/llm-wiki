@@ -105,8 +105,19 @@ export function getRawDocument(id: string) {
 /** 获取PDF列表 */
 export function getPDFs(page = 1, pageSize = 50, search?: string) {
   const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
-  if (search) params.set('search', search)
-  return request<{ items: { id: string; title: string; path: string; size: number; size_mb: number; updated: string }[]; total: number }>(`/pdfs?${params}`)
+  return request<{ items: { filename: string; path: string; size: number; uploaded_at: string; status: string; markdown_path: string | null }[]; total: number }>(`/pdf/list?${params}`).then(data => ({
+    items: data.items
+      .filter(item => !search || item.filename.toLowerCase().includes(search.toLowerCase()))
+      .map(item => ({
+        id: item.filename,
+        title: item.filename,
+        path: item.path,
+        size: item.size,
+        size_mb: Math.round(item.size / (1024 * 1024) * 100) / 100,
+        updated: item.uploaded_at ? new Date(item.uploaded_at).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+      })),
+    total: data.items.filter(item => !search || item.filename.toLowerCase().includes(search.toLowerCase())).length,
+  }))
 }
 
 /** 保存页面内容 */

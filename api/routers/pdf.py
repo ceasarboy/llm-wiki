@@ -180,6 +180,18 @@ async def convert_pdf(
             raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/serve/{filename}")
+async def serve_pdf(filename: str):
+    with get_db_ctx() as db:
+        pdf_file = db.query(PDFFile).filter(PDFFile.filename == filename).first()
+        if not pdf_file:
+            raise HTTPException(status_code=404, detail="PDF not found")
+        path = Path(pdf_file.path)
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="PDF file not found on disk")
+        return FileResponse(path, media_type="application/pdf")
+
+
 @router.delete("/{filename}")
 async def delete_pdf(
     filename: str, current_user: User = Depends(require_role(["admin"]))
