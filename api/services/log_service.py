@@ -5,6 +5,24 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from api.models import UserLog, SystemLog
 
+SENSITIVE_FIELDS = {"password", "api_key", "api_key_masked", "secret", "sign",
+                    "token", "access_token", "refresh_token", "authorization"}
+
+
+def _sanitize_details(details: Optional[dict]) -> Optional[dict]:
+    if not details:
+        return details
+    sanitized = {}
+    for k, v in details.items():
+        k_lower = k.lower()
+        if any(s in k_lower for s in SENSITIVE_FIELDS):
+            sanitized[k] = "***FILTERED***"
+        elif isinstance(v, dict):
+            sanitized[k] = _sanitize_details(v)
+        else:
+            sanitized[k] = v
+    return sanitized
+
 
 class LogService:
     @staticmethod
@@ -25,7 +43,7 @@ class LogService:
             action=action,
             resource_type=resource_type,
             resource_id=resource_id,
-            details=json.dumps(details) if details else None,
+            details=json.dumps(_sanitize_details(details)) if details else None,
             ip_address=ip_address,
             user_agent=user_agent,
         )
@@ -48,7 +66,7 @@ class LogService:
             module=module,
             action=action,
             message=message,
-            details=json.dumps(details) if details else None,
+            details=json.dumps(_sanitize_details(details)) if details else None,
         )
         db.add(log)
         db.commit()

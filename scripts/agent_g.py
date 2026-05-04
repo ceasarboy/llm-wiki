@@ -35,52 +35,72 @@ OUTPUT_DIR = Path(PATHS_CONFIG["output_dir"])
 # LLM 调用
 # =============================================================================
 
-def call_llm(prompt: str, system_prompt: str = None, temperature: float = None, max_tokens: int = None) -> str:
-    """调用 LLM"""
-    
+def call_llm(prompt: str, system_prompt: str = None, temperature: float = None, max_tokens: int = None, max_retries: int = 3) -> str:
+    """调用 LLM，带指数退避重试"""
+
+    import time
+
     api_url = LLM_CONFIG.get("api_url", "http://127.0.0.1:28789/v1/chat/completions")
     api_key = LLM_CONFIG.get("api_key", "")
     model = LLM_CONFIG.get("model", "default")
-    
+
     if temperature is None:
         temperature = LLM_CONFIG.get("temperature", 0.3)
     if max_tokens is None:
         max_tokens = LLM_CONFIG.get("max_tokens", 4000)
-    
+
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
-    
+
     timeout = LLM_CONFIG.get("timeout", 300)
-    print(f"  调用 LLM (timeout={timeout}s)...")
-    
-    try:
-        headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-        
-        response = requests.post(
-            api_url,
-            headers=headers,
-            json={
-                "model": model,
-                "messages": messages,
-                "temperature": temperature,
-                "max_tokens": max_tokens
-            },
-            timeout=timeout
-        )
-        response.raise_for_status()
-        result = response.json()["choices"][0]["message"]["content"]
-        print(f"  LLM 返回 {len(result)} 字符")
-        return result
-    except requests.exceptions.Timeout:
-        print(f"  LLM 调用超时 (>{timeout}s)")
-        return None
-    except Exception as e:
-        print(f"  LLM 调用失败: {e}")
-        return None
+
+    for attempt in range(max_retries + 1):
+        if attempt > 0:
+            wait_time = 2 ** (attempt - 1)
+            print(f"  重试 {attempt}/{max_retries}，等待 {wait_time}s...")
+            time.sleep(wait_time)
+
+        print(f"  调用 LLM (timeout={timeout}s)...")
+
+        try:
+            headers = {"Content-Type": "application/json"}
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+
+            response = requests.post(
+                api_url,
+                headers=headers,
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens
+                },
+                timeout=timeout
+            )
+            response.raise_for_status()
+            result = response.json()["choices"][0]["message"]["content"]
+            print(f"  LLM 返回 {len(result)} 字符")
+            return result
+        except requests.exceptions.Timeout:
+            print(f"  LLM 调用超时 (>{timeout}s)")
+            if attempt == max_retries:
+                return None
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code if e.response else 0
+            print(f"  LLM HTTP错误 ({status}): {e}")
+            if status in (429, 502, 503, 504):
+                continue
+            if attempt == max_retries:
+                return None
+        except Exception as e:
+            print(f"  LLM 调用失败: {e}")
+            if attempt == max_retries:
+                return None
+
+    return None
 
 
 # =============================================================================

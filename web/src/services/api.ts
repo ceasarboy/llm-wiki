@@ -2,21 +2,23 @@ const API_BASE = '/api'
 
 let isRedirecting = false
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+function getAuthHeaders(): Record<string, string> {
   const authStorage = localStorage.getItem('auth-storage')
-  let token: string | null = null
+  if (!authStorage) return {}
   
-  if (authStorage) {
-    try {
-      const parsed = JSON.parse(authStorage)
-      token = parsed.state?.token || null
-    } catch {
-      // ignore
-    }
+  try {
+    const parsed = JSON.parse(authStorage)
+    const token = parsed.state?.token
+    return token ? { 'Authorization': `Bearer ${token}` } : {}
+  } catch {
+    return {}
   }
+}
 
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...getAuthHeaders(),
   }
   
   if (options?.headers) {
@@ -24,10 +26,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     Object.keys(optHeaders).forEach(key => {
       headers[key] = optHeaders[key]
     })
-  }
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -79,7 +77,7 @@ export function getPageDetail(id: string) {
 
 /** 系统状态 */
 export function getSystemStatus() {
-  return request<{ total_docs: number; processed_docs: number; pending_docs: number; pass_rate: number; avg_score: number; review_queue: number; last_check: string }>('/status')
+  return request<{ total_docs: number; processed_docs: number; pending_docs: number; pass_rate: number; avg_score: number; review_queue: number; last_check: string; counts_by_type: Record<string, number> }>('/maintenance/status')
 }
 
 /** 热门查询 */
@@ -213,21 +211,9 @@ export async function uploadPDF(file: File): Promise<PDFUploadResponse> {
   const formData = new FormData()
   formData.append('file', file)
   
-  const authStorage = localStorage.getItem('auth-storage')
-  let token: string | null = null
-  
-  if (authStorage) {
-    try {
-      const parsed = JSON.parse(authStorage)
-      token = parsed.state?.token || null
-    } catch {
-      // ignore
-    }
-  }
-  
   const res = await fetch('/api/pdf/upload', {
     method: 'POST',
-    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    headers: getAuthHeaders(),
     body: formData,
   })
   
@@ -255,28 +241,28 @@ export function convertPDF(filename: string) {
 
 /** 修复无效Frontmatter */
 export function fixFrontmatter(id: string) {
-  return request<{ success: boolean; message: string }>(`/fix/frontmatter/${encodeURIComponent(id)}`, {
+  return request<{ success: boolean; message: string }>(`/maintenance/fix/frontmatter/${encodeURIComponent(id)}`, {
     method: 'POST',
   })
 }
 
 /** 删除不完整论文并重新生成（异步任务） */
 export function regeneratePaper(id: string) {
-  return request<{ task_id: string; status: string; message: string; deleted_paper?: string; deleted_entities?: string[]; deleted_concepts?: string[] }>(`/fix/regenerate-paper/${encodeURIComponent(id)}`, {
+  return request<{ task_id: string; status: string; message: string; deleted_paper?: string; deleted_entities?: string[]; deleted_concepts?: string[] }>(`/maintenance/fix/regenerate-paper/${encodeURIComponent(id)}`, {
     method: 'POST',
   })
 }
 
 /** 查询后台任务状态 */
 export function getTaskStatus(taskId: string) {
-  return request<{ status: string; message: string; deleted_paper?: string; deleted_entities?: string[]; deleted_concepts?: string[]; regenerated_files?: string[]; finished_at?: string }>(`/fix/task-status/${taskId}`)
+  return request<{ status: string; message: string; deleted_paper?: string; deleted_entities?: string[]; deleted_concepts?: string[]; regenerated_files?: string[]; finished_at?: string }>(`/maintenance/fix/task-status/${taskId}`)
 }
 
 /** 修复断裂链接 */
 export function fixBrokenLink(id: string, action: 'remove' | 'replace', brokenLink: string, replacement?: string) {
   const body: Record<string, string> = { action, broken_link: brokenLink }
   if (replacement) body.replacement = replacement
-  return request<{ success: boolean; message: string }>(`/fix/broken-link/${encodeURIComponent(id)}`, {
+  return request<{ success: boolean; message: string }>(`/maintenance/fix/broken-link/${encodeURIComponent(id)}`, {
     method: 'POST',
     body: JSON.stringify(body),
   })
@@ -284,7 +270,7 @@ export function fixBrokenLink(id: string, action: 'remove' | 'replace', brokenLi
 
 /** 合并重复实体 */
 export function mergeEntities(keepPage: string, removePage: string) {
-  return request<{ success: boolean; message: string; updated_refs?: number }>(`/fix/merge-entities`, {
+  return request<{ success: boolean; message: string; updated_refs?: number }>(`/maintenance/fix/merge-entities`, {
     method: 'POST',
     body: JSON.stringify({ keep_page: keepPage, remove_page: removePage }),
   })
@@ -325,7 +311,7 @@ export interface HealthCheckReport {
 
 /** 运行健康体检 */
 export function runHealthCheck(layer: string = 'all') {
-  return request<HealthCheckReport>(`/health-check?layer=${layer}`, {
+  return request<HealthCheckReport>(`/maintenance/health-check?layer=${layer}`, {
     method: 'POST',
   })
 }
