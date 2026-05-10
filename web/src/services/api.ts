@@ -56,6 +56,14 @@ export function postQuery(question: string) {
   })
 }
 
+/** 保存问答到 Wiki */
+export function saveQuery(question: string, answer: string, sources: { id: string; title: string; path: string }[]) {
+  return request<{ success: boolean; path: string; message: string }>('/save-query', {
+    method: 'POST',
+    body: JSON.stringify({ question, answer, sources }),
+  })
+}
+
 /** 知识库搜索 */
 export function searchKnowledge(query: string, type?: string) {
   const params = new URLSearchParams({ q: query })
@@ -301,6 +309,25 @@ export function deletePDF(filename: string) {
   })
 }
 
+/** 获取Markdown内容 */
+export interface MarkdownContent {
+  filename: string
+  markdown_path: string
+  content: string
+  size: number
+}
+
+export function getMarkdownContent(filename: string) {
+  return request<MarkdownContent>(`/pdf/markdown/${encodeURIComponent(filename)}`)
+}
+
+/** 重新转换PDF */
+export function reconvertPDF(filename: string) {
+  return request<PDFConvertResponse>(`/pdf/reconvert?filename=${encodeURIComponent(filename)}`, {
+    method: 'POST',
+  })
+}
+
 /** 健康体检报告 */
 export interface HealthCheckReport {
   success: boolean
@@ -332,4 +359,47 @@ export function runHealthCheck(layer: string = 'all') {
   return request<HealthCheckReport>(`/maintenance/health-check?layer=${layer}`, {
     method: 'POST',
   })
+}
+
+export function createSurvey(items: { id: string; type: string }[], topic = '', prompt = '') {
+  return request<{ task_id: string; status: string }>('/synthesis/survey', {
+    method: 'POST',
+    body: JSON.stringify({ items, topic, prompt }),
+  })
+}
+
+export function createCompare(items: { id: string; type: string }[], topic = '', prompt = '') {
+  return request<{ task_id: string; status: string }>('/synthesis/compare', {
+    method: 'POST',
+    body: JSON.stringify({ items, topic, prompt }),
+  })
+}
+
+export function searchSynthesisItems(q = '', type?: string, page = 1, pageSize = 50) {
+  const params = new URLSearchParams({ q, page: String(page), page_size: String(pageSize) })
+  if (type) params.set('type', type)
+  return request<{ items: { id: string; title: string; type: string; tags: string[]; updated: string }[]; total: number }>(`/synthesis/search-items?${params}`)
+}
+
+export function getSynthesisTask(taskId: string) {
+  return request<Record<string, any>>(`/synthesis/task/${taskId}`)
+}
+
+export function listSyntheses(page = 1, pageSize = 20, type?: string) {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  if (type) params.set('type', type)
+  return request<{ items: any[]; total: number }>(`/synthesis/list?${params}`)
+}
+
+export function exportSynthesisPdf(pageId: string) {
+  const authStorage = localStorage.getItem('auth-storage')
+  let token = ''
+  if (authStorage) {
+    try {
+      const parsed = JSON.parse(authStorage)
+      token = parsed.state?.token || ''
+    } catch {}
+  }
+  const url = `${API_BASE}/synthesis/export-pdf/${encodeURIComponent(pageId)}?token=${token}`
+  window.open(url, '_blank')
 }

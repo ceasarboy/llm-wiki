@@ -28,6 +28,9 @@ from api.database import get_db
 from api.middleware.auth import require_role
 from api.models import User
 
+sys.path.insert(0, str(SCRIPTS_DIR))
+_qdrant_cfg = yaml.safe_load(open(RAGTEST_DIR / "config.yaml", encoding="utf-8")).get("qdrant", {})
+
 router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 
 
@@ -492,3 +495,23 @@ async def rebuild_chromadb(
     )
 
     return {"success": True, "message": "ChromaDB 已成功重建"}
+
+
+@router.post("/rebuild-qdrant")
+async def rebuild_qdrant(
+    current_user: User = Depends(require_role(["admin"])),
+):
+    try:
+        from concurrent.futures import ThreadPoolExecutor
+        from qdrant_indexer import build_qdrant_index
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            ThreadPoolExecutor(1),
+            build_qdrant_index,
+            WIKI_PATH,
+            _qdrant_cfg.get("collection_name", "llm_wiki_bge"),
+        )
+        return {"success": True, "message": "Qdrant BGE-M3 索引已成功重建"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Qdrant 重建失败: {str(e)}")

@@ -41,6 +41,7 @@ class QueryResponse(BaseModel):
 
 class HotQueriesResponse(BaseModel):
     queries: List[str]
+    saved: List[dict] = []
 
 
 class RecentUpdate(BaseModel):
@@ -142,70 +143,9 @@ async def query(request: QueryRequest):
         scripts_dir = str(Path(__file__).parent.parent.parent / "scripts")
         if scripts_dir not in sys.path:
             sys.path.insert(0, scripts_dir)
-        from qmd_search_simple import hybrid_search
+        from qdrant_search import hybrid_search_bge
 
-        search_results = hybrid_search(request.question, top_k=30)
-
-        query_lower = request.question.lower()
-        query_keywords = set(re.findall(r"[a-zA-Z]+", query_lower))
-        cn_segments = re.findall(r"[\u4e00-\u9fff]+", query_lower)
-        stop_words = {
-            "有几种", "有哪些", "是什么", "什么是", "如何", "怎么", "为什么",
-            "哪些", "几种", "什么", "可以", "能够", "之间", "关系", "区别",
-            "联系", "还有", "其他", "的", "了", "在", "是", "我", "你", "他",
-            "她", "它", "们", "这", "那", "一", "个", "不", "没", "会", "能",
-            "要", "说", "去", "做", "看", "想", "给", "让", "被", "把", "从",
-            "到", "对", "向", "为", "以", "用", "也", "都", "和",
-        }
-        for seg in cn_segments:
-            query_keywords.add(seg)
-            for i in range(len(seg)):
-                for j in range(i + 2, min(len(seg) + 1, i + 5)):
-                    sub = seg[i:j]
-                    if sub not in stop_words and len(sub) >= 2:
-                        query_keywords.add(sub)
-
-        if query_keywords:
-            existing_ids = {r["id"] for r in search_results}
-            core_keywords = [
-                kw for kw in query_keywords if len(kw) >= 2 and kw not in stop_words
-            ]
-            for page_id, page_info in vault_index.pages.items():
-                if page_id in existing_ids:
-                    continue
-                matched = any(
-                    kw in page_info.get("title", "").lower() for kw in core_keywords
-                )
-                if not matched:
-                    continue
-                try:
-                    md_file = _safe_path(WIKI_PATH, page_id)
-                except HTTPException:
-                    continue
-                if md_file.exists():
-                    content = md_file.read_text(encoding="utf-8")
-                    if content.startswith("---"):
-                        parts = content.split("---", 2)
-                        if len(parts) >= 3:
-                            content = parts[2]
-                    search_results.append(
-                        {
-                            "id": page_id,
-                            "content": content[:2000],
-                            "metadata": {
-                                "page_name": page_id,
-                                "title": page_info.get("title", ""),
-                                "type": page_info.get("type", ""),
-                            },
-                            "final_score": 0.6,
-                            "vector_score": 0,
-                            "keyword_score": 0,
-                        }
-                    )
-                    existing_ids.add(page_id)
-
-        search_results.sort(key=lambda x: x.get("final_score", 0), reverse=True)
-        search_results = search_results[:20]
+        search_results = hybrid_search_bge(request.question, top_k=30)
 
         sources = []
         contexts = []
@@ -216,7 +156,7 @@ async def query(request: QueryRequest):
                     id=metadata.get("page_name", r["id"]),
                     title=metadata.get("title", r["id"]),
                     path=f"wiki/{r['id']}",
-                    relevance=r.get("final_score", 0.5),
+                    relevance=min(r.get("final_score", 0.5), 0.99),
                 )
             )
             contexts.append(r.get("content", ""))
@@ -232,6 +172,18 @@ async def query(request: QueryRequest):
             related_questions=HOT_QUERIES[:3],
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        try:
+            from api.services.log_service import LogService
+            from api.dependencies import get_db_ctx
+            with get_db_ctx() as db:
+                LogService.log_system_event(
+                    db, "ERROR", "search", "query_failed",
+                    f"{request.question[:200]}: {traceback.format_exc()[:800]}"
+                )
+        except Exception:
+            pass
         return QueryResponse(
             answer=f"搜索功能暂时不可用: {str(e)}",
             sources=[],
@@ -241,7 +193,24 @@ async def query(request: QueryRequest):
 
 @router.get("/hot-queries", response_model=HotQueriesResponse)
 async def get_hot_queries():
-    return HotQueriesResponse(queries=HOT_QUERIES)
+    saved = []
+    faq_dir = WIKI_PATH / "faq"
+    if faq_dir.exists():
+        for md_file in sorted(faq_dir.glob("*.md"), key=lambda f: f.stat().st_mtime, reverse=True)[:10]:
+            try:
+                content = md_file.read_text(encoding="utf-8")
+                match = re.search(r'^question:\s*"(.+?)"', content, re.MULTILINE)
+                if not match:
+                    match = re.search(r'^# (.+)', content, re.MULTILINE)
+                if match:
+                    saved.append({
+                        "question": match.group(1),
+                        "id": f"faq/{md_file.stem}",
+                        "path": str(md_file),
+                    })
+            except Exception:
+                pass
+    return HotQueriesResponse(queries=HOT_QUERIES, saved=saved)
 
 
 @router.get("/recent-updates", response_model=RecentUpdatesResponse)
@@ -256,3 +225,80 @@ async def get_recent_updates(limit: int = 5):
         for p in sorted_pages[:limit]
     ]
     return RecentUpdatesResponse(items=items)
+
+
+class SaveQueryRequest(BaseModel):
+    question: str
+    answer: str
+    sources: list = []
+
+
+class SaveQueryResponse(BaseModel):
+    success: bool
+    path: str
+    message: str
+
+
+@router.post("/save-query", response_model=SaveQueryResponse)
+async def save_query(request: SaveQueryRequest):
+    from datetime import datetime
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    safe_question = request.question[:40].replace("/", "_").replace("\\", "_").replace("?", "").replace("？", "")
+    filename = f"{today}_{safe_question}.md"
+
+    faq_dir = WIKI_PATH / "faq"
+    faq_dir.mkdir(parents=True, exist_ok=True)
+
+    sources_md = ""
+    if request.sources:
+        sources_md = "\n## 来源\n\n"
+        for i, src in enumerate(request.sources):
+            title = src.get("title", src.get("id", ""))
+            path = src.get("path", "")
+            sources_md += f"- [{i+1}] {title} ({path})\n"
+
+    content = f"""---
+title: "{request.question[:60]}"
+type: faq
+tags: []
+source: []
+created: "{today}"
+updated: "{today}"
+status: generated
+question: "{request.question}"
+---
+
+# {request.question}
+
+## 回答
+
+{request.answer}
+{sources_md}
+---
+_保存时间: {datetime.now().isoformat()}_
+"""
+
+    filepath = faq_dir / filename
+    filepath.write_text(content, encoding="utf-8")
+
+    try:
+        from api.database import SessionLocal
+        from api.models import SystemLog
+        db = SessionLocal()
+        try:
+            db.add(SystemLog(
+                level="INFO", module="search", action="save_query",
+                message=f"已保存问答: {request.question[:60]}",
+            ))
+            db.commit()
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+    return SaveQueryResponse(
+        success=True,
+        path=str(filepath),
+        message=f"已保存到 {filename}",
+    )

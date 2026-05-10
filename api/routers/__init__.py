@@ -9,6 +9,7 @@ from .ingest import router as ingest_router
 from .config import router as config_router
 from .graph import router as graph_router
 from .maintenance import router as maintenance_router
+from .synthesis import router as synthesis_router
 
 __all__ = [
     "auth_router",
@@ -23,4 +24,5 @@ __all__ = [
     "config_router",
     "graph_router",
     "maintenance_router",
+    "synthesis_router",
 ]

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Input, Card, Button, Tag, Spin, Empty, Typography, Divider, Space, message } from 'antd'
 import { SendOutlined, SaveOutlined, CopyOutlined, LikeOutlined, DislikeOutlined } from '@ant-design/icons'
 import { useAppStore } from '../stores/useAppStore'
-import { postQuery } from '../services/api'
+import { postQuery, saveQuery } from '../services/api'
 import { renderMarkdown } from '../utils/markdown'
 
 const { Title, Text } = Typography
@@ -49,8 +49,19 @@ export default function QueryPage() {
     }
   }
 
-  const handleSave = () => {
-    message.success('已保存到 Wiki')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!queryResult) return
+    setSaving(true)
+    try {
+      const res = await saveQuery(queryResult.question, queryResult.answer, queryResult.sources)
+      message.success(res.message || '已保存到 Wiki')
+    } catch (err) {
+      message.error(`保存失败: ${(err as Error).message}`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleCopy = () => {
@@ -128,7 +139,7 @@ export default function QueryPage() {
             )}
             {/* 操作按钮 */}
             <div className="flex gap-2 mt-4">
-              <Button icon={<SaveOutlined />} onClick={handleSave}>保存到 Wiki</Button>
+              <Button icon={<SaveOutlined />} onClick={handleSave} loading={saving}>保存到 Wiki</Button>
               <Button icon={<CopyOutlined />} onClick={handleCopy}>复制</Button>
               <Button icon={<LikeOutlined />}>有用</Button>
               <Button icon={<DislikeOutlined />}>无用</Button>

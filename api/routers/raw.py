@@ -134,7 +134,7 @@ async def update_raw_document(
     return {"success": True, "message": "保存成功", "new_id": md_file.stem}
 
 
-@router.get("/{id}/pdf")
+@router.api_route("/{id}/pdf", methods=["GET", "HEAD"])
 async def get_raw_pdf(id: str):
     decoded_id = unquote(id)
     pdf_dir = VAULT_PATH / "raw" / "papers" / "pdf"
@@ -148,41 +148,3 @@ async def get_raw_pdf(id: str):
         raise HTTPException(status_code=404, detail="PDF not found")
 
     return FileResponse(pdf_file, media_type="application/pdf")
-
-
-@router.get("/../assets")
-async def get_asset(path: str):
-    decoded_path = unquote(path)
-    if os.path.isabs(decoded_path) or ".." in decoded_path:
-        raise HTTPException(
-            status_code=403, detail="Absolute paths and parent references not allowed"
-        )
-
-    allowed_dirs = [VAULT_PATH / "assets", VAULT_PATH / "raw"]
-    asset_path = Path(decoded_path)
-
-    is_allowed = False
-    for allowed_dir in allowed_dirs:
-        try:
-            asset_path.resolve().relative_to(allowed_dir.resolve())
-            is_allowed = True
-            break
-        except ValueError:
-            continue
-
-    if not is_allowed:
-        raise HTTPException(status_code=403, detail="Access denied")
-    if not asset_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-
-    content_types = {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".gif": "image/gif",
-        ".svg": "image/svg+xml",
-        ".webp": "image/webp",
-    }
-    return FileResponse(
-        asset_path, media_type=content_types.get(asset_path.suffix.lower(), "application/octet-stream")
-    )

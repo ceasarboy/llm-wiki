@@ -1,0 +1,177 @@
+开始导入 1 篇论文...
+============================================================
+Phase 4 批量处理编排脚本 v2.0
+新流程: generate_all_in_one → review_with_fix_cycle → process_merge
+============================================================
+raw 目录共 24 个文档
+待处理: 1 个 | 已处理: 123 | 跳过: 226 | 失败: 2
+
+共 1 个待处理文档，分 1 批（每批 1 个）
+本次最多处理 1 批（1 个文档）
+
+============================================================
+批次 31/31  (1 个文档)
+============================================================
+
+  [1/1] Chain_of_Thought.md
+    [Step 1] 调用 generate_all_in_one()...
+  调用 LLM 增强版生成论文+实体+概念...
+  调用 LLM (timeout=300s)...
+  LLM 返回 10049 字符
+  结构分析: 已提取
+  LLM 自评分数: 8.8/10, 自评结果: 通过
+  生成: 论文1篇, 实体25个, 概念5个
+    [Step 1] 完成: LLM自评 8.8/10, 通过
+    [Step 1] 生成: 论文1篇, 实体25个, 概念5个
+    [Step 2] 调用 review_with_fix_cycle()...
+    审核通过 (第1轮)
+    [Step 2] 完成: 程序审核 10.0/10, 通过, 修正0轮
+    审核通过 (第1轮)
+    [Entity] 杰森·韦-Jason Wei: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] 薛哲·王-Xuezhi Wang: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] 戴尔·舒尔曼斯-Dale Schuurmans: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] 马尔滕·博斯马-Maarten Bosma: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] 布莱恩·伊克特-Brian Ichter: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] 费·夏-Fei Xia: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] 埃德·H·奇-Ed H. Chi: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] 奎克·V·勒-Quoc V. Le: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] 丹尼·周-Denny Zhou: 10.0/10 [OK] (新建)
+    [Merge] 发现匹配: 谷歌研究-Google Research <-> 谷歌研究-Google Research.md (方式: english_exact)
+    [Merge] 内容相似度: 0.52
+    [Merge] 调用 LLM 判断是否融合...
+  调用 LLM (timeout=300s)...
+  LLM 返回 1068 字符
+    [Merge] LLM判断: 不融合 - 两个实体标题完全相同，均指代谷歌公司的研究部门（Google Research），描述内容互补且无冲突，属于同一实体。
+    审核通过 (第1轮)
+    [Entity] 谷歌研究-Google Research: 10.0/10 [OK] (融合)
+    审核通过 (第1轮)
+    [Entity] GSM8K: 10.0/10 [OK] (新建)
+    [Merge] 发现匹配: SVAMP <-> SVAMP.md (方式: english_exact)
+    [Merge] 内容相似度: 0.50
+    [Merge] 调用 LLM 判断是否融合...
+  调用 LLM (timeout=300s)...
+  LLM 返回 1023 字符
+    [Merge] LLM判断: 不融合 - 两个实体均指由Patel等人（2021）提出的数学文字题数据集SVAMP，名称、类型、描述完全一致，仅来源论文不同，应融合为一个实体。
+    审核通过 (第1轮)
+    [Entity] SVAMP: 10.0/10 [OK] (融合)
+    [Merge] 发现匹配: ASDiv <-> ASDiv.md (方式: english_exact)
+    [Merge] 内容相似度: 0.52
+    [Merge] 调用 LLM 判断是否融合...
+  调用 LLM (timeout=300s)...
+  LLM 返回 942 字符
+    [Merge] LLM判断: 不融合 - 两个实体标题完全一致（均使用英文专有名称“ASDiv”），且上下文均指向同一数学文字题数据集，作者均为Miao et al., 2020，因此是同一个实体，应融合。
+    审核通过 (第1轮)
+    [Entity] ASDiv: 10.0/10 [OK] (融合)
+    审核通过 (第1轮)
+    [Entity] AQuA: 10.0/10 [OK] (新建)
+    [Merge] 发现匹配: MAWPS <-> MAWPS.md (方式: english_exact)
+    [Merge] 内容相似度: 0.48
+    [Merge] 调用 LLM 判断是否融合...
+  调用 LLM (timeout=300s)...
+  LLM 返回 1046 字符
+    [Merge] LLM判断: 不融合 - 两个实体均指代同一个数学文字题数据集 MAWPS（Math Word Problem Repository），由 Koncel-Kedziorski 等人于 2016 年提出，分别在不同论文（Chain-of-Thought 和 Toolformer）中被引用，描述一致，应融合。
+    审核通过 (第1轮)
+    [Entity] MAWPS: 10.0/10 [OK] (融合)
+    审核通过 (第1轮)
+    [Entity] CSQA: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] StrategyQA: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] Date Understanding: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] Sports Understanding: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] SayCan: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] LaMDA: 9.9/10 [OK] (新建)
+    [Merge] 发现匹配: GPT-3 <-> GPT-2-GPT-2.md (方式: chinese_exact)
+    [Merge] 内容相似度: 0.61
+    [Merge] 调用 LLM 判断是否融合...
+  调用 LLM (timeout=300s)...
+  LLM 返回 137 字符
+    [Merge] LLM判断: 不融合 - GPT-3和GPT-2是OpenAI发布的两个不同代际的语言模型系列，GPT-3参数规模为350M到175B，而GPT-2-GPT-2指代GPT-2系列（125M-1.5B），两者在模型架构、发布时间和参数规模上有明显区别，属于不同实体。
+    审核通过 (第1轮)
+    [Entity] GPT-3: 9.9/10 [OK] (融合)
+    [Merge] 发现匹配: PaLM <-> PaLM-540B.md (方式: chinese_exact)
+    [Merge] 内容相似度: 0.47
+    [Merge] 调用 LLM 判断是否融合...
+  调用 LLM (timeout=300s)...
+  LLM 返回 143 字符
+    [Merge] LLM判断: 不融合 - 新实体“PaLM”指的是Google的Pathways语言模型系列（包含8B、62B、540B等多个参数规模），而已有实体“PaLM-540B”特指该系列中5400亿参数的具体模型版本。两者是类别与实例的关系，并非同一事物，应分开保存以保持层次清晰。
+    审核通过 (第1轮)
+    [Entity] PaLM: 9.9/10 [OK] (融合)
+    审核通过 (第1轮)
+    [Entity] Codex: 9.9/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Entity] UL2 20B: 9.9/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Concept] 链式思维提示-Chain-of-Thought Prompting: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Concept] 涌现能力-Emergent Ability: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Concept] 标准少样本提示-Standard Few-shot Prompting: 10.0/10 [OK] (新建)
+    审核通过 (第1轮)
+    [Concept] 消融实验-Ablation Study: 9.9/10 [OK] (新建)
+    [Merge] 发现匹配: 长度泛化-Length Generalization <-> 长度归一化-Length Normalization.md (方式: fuzzy)
+    [Merge] 内容相似度: 0.53
+    [Merge] 调用 LLM 判断是否融合...
+  调用 LLM (timeout=300s)...
+  LLM 返回 152 字符
+    [Merge] LLM判断: 不融合 - 两个概念虽然中文译名相似，但指代不同的事物。“长度泛化”是指模型在推理时能处理比训练示例更长的序列的能力，涉及模型泛化性；“长度归一化”是一种在训练中通过除以序列长度来消除对短序列偏好的技术，属于方法改进。两者在技术内涵、应用场景和来源论文中均无交集，因此应分开保存。
+    审核通过 (第1轮)
+    [Concept] 长度泛化-Length Generalization: 10.0/10 [OK] (融合)
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\papers\Chain_of_Thought_论文.md
+
+处理: Chain_of_Thought_论文.md
+  已是链接格式，跳过
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\杰森·韦-Jason Wei.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\薛哲·王-Xuezhi Wang.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\戴尔·舒尔曼斯-Dale Schuurmans.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\马尔滕·博斯马-Maarten Bosma.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\布莱恩·伊克特-Brian Ichter.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\费·夏-Fei Xia.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\埃德·H·奇-Ed H. Chi.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\奎克·V·勒-Quoc V. Le.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\丹尼·周-Denny Zhou.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\谷歌研究-Google Research.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\GSM8K.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\SVAMP.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\ASDiv.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\AQuA.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\MAWPS.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\CSQA.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\StrategyQA.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\Date Understanding.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\Sports Understanding.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\SayCan.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\LaMDA.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\GPT-3.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\PaLM.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\Codex.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\entities\UL2 20B.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\concepts\链式思维提示-Chain-of-Thought Prompting.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\concepts\涌现能力-Emergent Ability.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\concepts\标准少样本提示-Standard Few-shot Prompting.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\concepts\消融实验-Ablation Study.md
+    [Persist] 写入: C:\Users\Administrator\Documents\Obsidian Vault\wiki\concepts\长度泛化-Length Generalization.md
+
+批次 31 完成: 通过=1 审核失败=0 错误=0
+
+============================================================
+Phase 4 批量处理汇总
+============================================================
+本次处理: 1 个文档
+  通过:       1
+  审核失败:   0
+  错误:       0
+累计进度: 124/125 已完成
+
+汇总报告: E:\ragtest\reports\batch_summary_20260504_124351.json
