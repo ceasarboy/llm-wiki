@@ -21,9 +21,6 @@ LLM_CONFIG = get_llm_config()
 
 WIKI_DIR = Path(PATHS["wiki_dir"])
 RAW_DIR = Path(PATHS["raw_dir"])
-INDEX_DIR = Path(PATHS.get("index_dir", "E:/ragtest/index"))
-CHROMA_PERSIST_DIR = INDEX_DIR / "chroma"
-COLLECTION_NAME = "llm_wiki"
 
 COMPARE_SYSTEM_PROMPT = """你是一位行业专家，严谨、细致。请根据用户的提示词和提供的文档内容撰写对比分析报告。
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Tabs, List, Tag, Input, Empty, Spin, Typography, Button, Card, Segmented, message } from 'antd'
-import { SearchOutlined, BookOutlined, ClearOutlined, FileTextOutlined, ArrowLeftOutlined, ReloadOutlined, EditOutlined, EyeOutlined, ColumnWidthOutlined, SaveOutlined, FilePdfOutlined, FormOutlined } from '@ant-design/icons'
+import { Tabs, List, Tag, Input, Empty, Spin, Typography, Button, Card, Segmented, message, Pagination } from 'antd'
+import { SearchOutlined, BookOutlined, ClearOutlined, FileTextOutlined, ArrowLeftOutlined, ReloadOutlined, EditOutlined, EyeOutlined, ColumnWidthOutlined, SaveOutlined, FormOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPages, getSystemStatus, searchKnowledge, getRawDocuments, getRawDocument, saveRawDocument, getRawPdfUrl } from '../services/api'
 import { renderMarkdown } from '../utils/markdown'
@@ -44,12 +44,13 @@ export default function KnowledgePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [activeTab, setActiveTab] = useState(urlType || 'all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
   const [selectedRawId, setSelectedRawId] = useState<string | null>(null)
   const [editMode, setEditMode] = useState<'preview' | 'edit' | 'split'>('preview')
   const [editContent, setEditContent] = useState('')
   const [editFilename, setEditFilename] = useState('')
   const [hasPdf, setHasPdf] = useState(false)
-  const [showPdf, setShowPdf] = useState(true)
   const prevSelectedRawId = useRef<string | null>(null)
 
   useEffect(() => {
@@ -60,8 +61,8 @@ export default function KnowledgePage() {
   }, [searchQuery])
 
   const { data: pagesData, isLoading: pagesLoading, refetch: refetchPages } = useQuery({
-    queryKey: ['pages', activeTab === 'all' ? undefined : activeTab],
-    queryFn: () => getPages(activeTab === 'all' ? undefined : activeTab, 1, 100),
+    queryKey: ['pages', activeTab === 'all' ? undefined : activeTab, currentPage, pageSize],
+    queryFn: () => getPages(activeTab === 'all' ? undefined : activeTab, currentPage, pageSize),
     enabled: !debouncedQuery && activeTab !== 'raw',
   })
 
@@ -134,6 +135,7 @@ export default function KnowledgePage() {
 
   const handleTabChange = (key: string) => {
     setActiveTab(key)
+    setCurrentPage(1)
     setSelectedRawId(null)
     if (key === 'all') {
       navigate('/knowledge')
@@ -175,13 +177,8 @@ export default function KnowledgePage() {
 
   const renderedContent = useMemo(() => {
     if (!rawDetail?.content) return ''
-    return renderMarkdown(rawDetail.content)
-  }, [rawDetail?.content])
-
-  const editRenderedContent = useMemo(() => {
-    if (!editContent) return ''
-    return renderMarkdown(editContent)
-  }, [editContent])
+    return renderMarkdown(rawDetail.content, selectedRawId || undefined)
+  }, [rawDetail?.content, selectedRawId])
 
   const renderRawContent = () => {
     if (selectedRawId && rawDetail) {
@@ -200,27 +197,58 @@ export default function KnowledgePage() {
                   options={[
                     { label: '预览', value: 'preview', icon: <EyeOutlined /> },
                     { label: '编辑', value: 'edit', icon: <EditOutlined /> },
-                    { label: '分屏', value: 'split', icon: <ColumnWidthOutlined /> },
+                    { label: '分屏', value: 'split', icon: <ColumnWidthOutlined />, disabled: !hasPdf },
                   ]}
                 />
-              )}
-              {hasPdf && (
-                <Button
-                  icon={<FilePdfOutlined />}
-                  onClick={() => setShowPdf(!showPdf)}
-                  type={showPdf ? 'primary' : 'default'}
-                >
-                  {showPdf ? '隐藏PDF' : '显示PDF'}
-                </Button>
               )}
             </div>
           </div>
 
-          <div className="flex gap-4" style={{ height: 'calc(100vh - 220px)' }}>
-            <div className="flex-1 min-w-0" style={{ display: 'flex', flexDirection: 'column' }}>
-              {canEdit && editMode !== 'preview' ? (
-                <div style={{ display: 'flex', flex: 1, gap: 8, minHeight: 0 }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          {editMode === 'split' && hasPdf ? (
+            <div className="flex gap-4" style={{ height: 'calc(100vh - 220px)' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                <div className="mb-2 flex items-center gap-2">
+                  <FormOutlined style={{ color: 'var(--text-secondary)' }} />
+                  <Input
+                    value={editFilename}
+                    onChange={(e) => {
+                      let val = e.target.value
+                      if (val.endsWith('.md')) val = val.slice(0, -3)
+                      setEditFilename(val)
+                    }}
+                    style={{ maxWidth: 300, fontWeight: 600 }}
+                    addonAfter=".md"
+                  />
+                  <Button
+                    type="primary"
+                    icon={<SaveOutlined />}
+                    onClick={handleSave}
+                    loading={saveMutation.isPending}
+                    disabled={editContent === rawDetail.content && editFilename === rawDetail.title}
+                  >
+                    保存
+                  </Button>
+                </div>
+                <textarea
+                  className="raw-editor-textarea"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  style={{ flex: 1, padding: 16, borderRadius: 8, outline: 'none' }}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: 0, height: '100%' }}>
+                <iframe
+                  src={getRawPdfUrl(selectedRawId) + '#toolbar=0&navpanes=0'}
+                  style={{ width: '100%', height: '100%', border: 0, borderRadius: 8, display: 'block' }}
+                  title="PDF Viewer"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-4" style={{ height: 'calc(100vh - 220px)' }}>
+              <div className="flex-1 min-w-0" style={{ display: 'flex', flexDirection: 'column' }}>
+                {canEdit && editMode !== 'preview' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                     <div className="mb-2 flex items-center gap-2">
                       <FormOutlined style={{ color: 'var(--text-secondary)' }} />
                       <Input
@@ -250,52 +278,32 @@ export default function KnowledgePage() {
                       style={{ flex: 1, padding: 16, borderRadius: 8, outline: 'none' }}
                     />
                   </div>
-                  {editMode === 'split' && (
-                    <div style={{ flex: 1, overflow: 'auto', background: 'var(--bg-secondary)', padding: 24, borderRadius: 12 }}>
-                      <div
-                        className="markdown-content"
-                        dangerouslySetInnerHTML={{ __html: editRenderedContent }}
-                      />
+                ) : (
+                  <Card className="glass-card-flat" style={{ flex: 1, overflow: 'auto' }}>
+                    <div className="mb-4 flex items-center justify-between">
+                      <Title level={4} style={{ color: 'var(--text-primary)', margin: 0 }}>
+                        {rawDetail.title}
+                      </Title>
+                      <Text type="secondary">
+                        {formatSize(rawDetail.size)} · 更新于 {rawDetail.updated}
+                      </Text>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <Card className="glass-card-flat" style={{ flex: 1, overflow: 'auto' }}>
-                  <div className="mb-4 flex items-center justify-between">
-                    <Title level={4} style={{ color: 'var(--text-primary)', margin: 0 }}>
-                      {rawDetail.title}
-                    </Title>
-                    <Text type="secondary">
-                      {formatSize(rawDetail.size)} · 更新于 {rawDetail.updated}
-                    </Text>
-                  </div>
-                  <div
-                    className="markdown-content"
-                    style={{
-                      maxHeight: 'calc(100vh - 320px)',
-                      overflow: 'auto',
-                      background: 'var(--bg-secondary)',
-                      padding: 24,
-                      borderRadius: 12,
-                    }}
-                    dangerouslySetInnerHTML={{ __html: renderedContent }}
-                  />
-                </Card>
-              )}
-            </div>
-
-            {showPdf && hasPdf && (
-              <div style={{ width: '45%', minWidth: 300 }}>
-                <Card className="glass-card-flat" style={{ height: '100%', padding: 0, overflow: 'hidden' }}>
-                  <iframe
-                    src={getRawPdfUrl(selectedRawId)}
-                    style={{ width: '100%', height: '100%', border: 0, minHeight: 600 }}
-                    title="PDF Viewer"
-                  />
-                </Card>
+                    <div
+                      className="markdown-content"
+                      style={{
+                        maxHeight: 'calc(100vh - 320px)',
+                        overflow: 'auto',
+                        background: 'var(--bg-secondary)',
+                        padding: 24,
+                        borderRadius: 12,
+                      }}
+                      dangerouslySetInnerHTML={{ __html: renderedContent }}
+                    />
+                  </Card>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )
     }
@@ -406,6 +414,25 @@ export default function KnowledgePage() {
             ) : (
               <Empty description={debouncedQuery ? `未找到 "${debouncedQuery}" 相关内容` : "暂无数据"} />
             )}
+            {displayData?.items?.length && displayData?.total ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+                <Pagination
+                  current={currentPage}
+                  pageSize={pageSize}
+                  total={displayData.total}
+                  showSizeChanger
+                  pageSizeOptions={['20', '50', '100']}
+                  onChange={(p, ps) => {
+                    setCurrentPage(p)
+                    if (ps !== pageSize) {
+                      setPageSize(ps)
+                      setCurrentPage(1)
+                    }
+                  }}
+                  showTotal={(total) => `共 ${total} 条`}
+                />
+              </div>
+            ) : null}
           </div>
         </Spin>
       )}

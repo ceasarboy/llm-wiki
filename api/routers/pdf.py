@@ -193,6 +193,74 @@ async def serve_pdf(filename: str):
         return FileResponse(path, media_type="application/pdf")
 
 
+@router.get("/markdown/{filename}")
+async def get_markdown(filename: str):
+    with get_db_ctx() as db:
+        pdf_file = db.query(PDFFile).filter(PDFFile.filename == filename).first()
+        if not pdf_file:
+            raise HTTPException(status_code=404, detail="文件不存在")
+        if not pdf_file.markdown_path:
+            raise HTTPException(status_code=404, detail="Markdown 文件尚未生成")
+        md_path = Path(pdf_file.markdown_path)
+        if not md_path.exists():
+            raise HTTPException(status_code=404, detail="Markdown 文件不存在于磁盘")
+        content = md_path.read_text(encoding="utf-8")
+        return {
+            "filename": filename,
+            "markdown_path": str(md_path),
+            "content": content,
+            "size": len(content),
+        }
+
+
+@router.post("/reconvert")
+async def reconvert_pdf(
+    filename: str,
+    current_user: User = Depends(require_role(["admin", "maintainer"])),
+):
+    from scripts.pdf_converter import convert_pdf_to_markdown
+
+    with get_db_ctx() as db:
+        pdf_file = db.query(PDFFile).filter(PDFFile.filename == filename).first()
+        if not pdf_file:
+            raise HTTPException(status_code=404, detail="文件不存在")
+
+        pdf_file.status = "converting"
+        db.commit()
+
+        try:
+            pdf_path = Path(pdf_file.path)
+            MD_DIR.mkdir(parents=True, exist_ok=True)
+            success, markdown_path, error = convert_pdf_to_markdown(
+                pdf_path, MD_DIR
+            )
+
+            if success:
+                pdf_file.status = "completed"
+                pdf_file.markdown_path = markdown_path
+                pdf_file.converted_at = datetime.now()
+                pdf_file.error_message = None
+                db.commit()
+
+                from api.services.log_service import LogService
+                LogService.log_system_event(
+                    db, "INFO", "pdf", "reconvert", f"PDF重新转换成功: {filename}"
+                )
+                return {"success": True, "message": "重新转换成功", "markdown_path": markdown_path}
+            else:
+                pdf_file.status = "failed"
+                pdf_file.error_message = error
+                db.commit()
+                raise HTTPException(status_code=500, detail=error or "重新转换失败")
+        except HTTPException:
+            raise
+        except Exception as e:
+            pdf_file.status = "failed"
+            pdf_file.error_message = str(e)
+            db.commit()
+            raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.delete("/{filename}")
 async def delete_pdf(
     filename: str, current_user: User = Depends(require_role(["admin"]))

@@ -21,7 +21,53 @@ Phase 3.4: Agent 自学习（V3 杀手功能）
 
 ---
 
-## 二、Phase 3.1：基础设施层
+## 二、Phase 3.1-A：批量转换定时任务（V3 首发）
+
+> 目标：解决 Marker 转换慢速的核心痛点，利用夜间非高峰时段自动处理堆积的 PDF。
+
+### 背景
+
+Marker 是本系统不可替代的 PDF 转换引擎（LaTeX 公式、引用链接、页锚定位），但单篇论文转换需分钟级。当批量导入 10+ 篇论文时，全程等待不现实。V3 首个交付项即为批量转换定时调度。
+
+### 任务清单
+
+| ID | 任务 | 描述 | 估计 |
+|----|------|------|------|
+| V3-3.1A.1 | 转换队列 | `POST /api/pdf/queue-convert` — 将待转换 PDF 加入 SQLite 队列表（`conversion_queue`） | 1.5h |
+| V3-3.1A.2 | 定时调度器 | `scripts/scheduler.py` — APScheduler 或内置 asyncio 定时任务，默认凌晨 2:00 触发 | 2h |
+| V3-3.1A.3 | 批量转换工作器 | `scripts/batch_converter.py` — 从队列取任务 → 逐个调用 convert_pdf_to_markdown → 更新状态 → 记录日志 | 2h |
+| V3-3.1A.4 | 进度追踪 | 前端 ImportPage 显示队列中/转换中/已完成/失败 状态，支持取消和重试 | 2h |
+| V3-3.1A.5 | 失败重试 | 转换失败自动重试（最多 2 次），失败后通知 + 标记 error | 1h |
+| V3-3.1A.6 | 配置化 | 定时任务 cron 表达式可配（config.yaml `scheduler.cron_convert: "0 2 * * *"`）；最大并发数可配 | 0.5h |
+
+### 验收标准
+
+- [ ] 上传 5 篇 PDF，点击"加入夜间转换队列"，次日早上全部转换完成
+- [ ] 队列中的 PDF 状态在 ImportPage 实时可见
+- [ ] 单篇转换失败不影响其他任务
+- [ ] 支持手动触发（白天也可用）
+
+### 数据模型
+
+```sql
+CREATE TABLE conversion_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT NOT NULL,
+    pdf_path TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',  -- pending/converting/completed/failed
+    priority INTEGER DEFAULT 0,
+    retries INTEGER DEFAULT 0,
+    max_retries INTEGER DEFAULT 2,
+    error_message TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    started_at DATETIME,
+    completed_at DATETIME
+);
+```
+
+---
+
+## 三、Phase 3.1：基础设施层
 
 > 目标：搭建 Agent 运行的基础设施，不影响任何 V2 功能。
 
@@ -133,6 +179,17 @@ flowchart TD
 | 状态管理 | **AgentState dataclass** | LangGraph StateGraph | 不到 50 行，不需要框架 |
 | 会话存储 | **MD 文件** | Redis/数据库 | 人类可读、可 Git 追踪、零运维 |
 | 记忆检索 | **ChromaDB 复用** | 新建独立向量库 | 知识检索和记忆检索同一个引擎 |
+| PDF 转换器 | **Marker（已确认）** | OpenDataLoader Hybrid | Marker 的 LaTeX 公式/引用链接/页锚不可替代；ODL 的 Formula 增强模式需 GPU（≥500MB 模型 CPU 推理 std::bad_alloc） |
+
+---
+
+## 六-B、基础设施环境约束（来自 2026-05-09 实测）
+
+| 约束 | 说明 | 影响 |
+|------|------|------|
+| TRAE Sandbox 不允许写 `~/.cache/` | 必须设 `HF_HOME` 到 `e:\ragtest\` | HuggingFace 模型必须放在项目目录下 |
+| 禁止修改 site-packages 源码 | Sandbox 阻止 `.pyc` 重新编译 | 所有配置必须通过环境变量传递 |
+| CPU 推理大模型不可行 | `std::bad_alloc` 频繁发生 | 模型 >500MB 的场景需要 GPU 或有损降级 |
 
 ---
 
@@ -190,6 +247,7 @@ V3.4.0 — Phase 3.4 完成（Agent 自学习上线）
 | 自我评估不准确 | 学习到错误经验 | 人工 review 机制（Agent_R 审核自适应） |
 | 记忆文件膨胀 | 加载变慢 | 自动摘要压缩 + 过期清理 |
 | V2 未收尾 | V3 基础不牢 | V2 必须先完成 Iteration 1-2（至少） |
+| TRAE Sandbox 限制 | `~/.cache/` 不可写、禁止修改 site-packages | 环境变量替代源码修改；模型目录统一放在项目内 |
 
 ---
 
@@ -198,6 +256,10 @@ V3.4.0 — Phase 3.4 完成（Agent 自学习上线）
 | 日期 | 内容 | 状态 |
 |------|------|------|
 | 2026-05-04 | V3 蓝图制定 | 计划完成 |
+| 2026-05-09 | PDF 转换器选型评估（Marker vs OpenDataLoader） | 已完成 |
+| 2026-05-09 | OpenDataLoader Hybrid 模式测试（auto+fallback/formula/picture） | 已完成 |
+| 2026-05-09 | 决策：保持使用 Marker 作为主转换器 | 已确认 |
+| 2026-05-09 | 本地模型缓存环境搭建（HF mirror + HF_HOME） | 已完成 |
 
 ---
 

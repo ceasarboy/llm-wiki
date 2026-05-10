@@ -21,9 +21,6 @@ LLM_CONFIG = get_llm_config()
 
 WIKI_DIR = Path(PATHS["wiki_dir"])
 RAW_DIR = Path(PATHS["raw_dir"])
-INDEX_DIR = Path(PATHS.get("index_dir", "E:/ragtest/index"))
-CHROMA_PERSIST_DIR = INDEX_DIR / "chroma"
-COLLECTION_NAME = "llm_wiki"
 
 SURVEY_SYSTEM_PROMPT = """你是一位行业专家，严谨、细致。请根据用户的提示词和提供的文档内容撰写报告。
 
@@ -62,41 +59,30 @@ SURVEY_SYSTEM_PROMPT = """你是一位行业专家，严谨、细致。请根据
 
 
 def collect_related_papers(keyword: str, max_papers: int = 20) -> List[Dict]:
-    """从 ChromaDB 语义检索 + VaultIndex 关键词匹配收集相关论文"""
+    """从 BGE-M3 + Qdrant 语义检索 + VaultIndex 关键词匹配收集相关论文"""
     papers = []
     seen_ids = set()
 
     try:
-        import chromadb
-        from qmd_search_simple import SentenceTransformerEmbedding
+        from qdrant_search import hybrid_search_bge
 
-        client = chromadb.PersistentClient(path=str(CHROMA_PERSIST_DIR))
-        collection = client.get_collection(name=COLLECTION_NAME)
-        embedder = SentenceTransformerEmbedding.get_model()
-        query_embedding = embedder.encode([keyword], normalize_embeddings=True).tolist()
-
-        results = collection.query(
-            query_embeddings=query_embedding,
-            n_results=max_papers * 2,
-            include=["documents", "metadatas", "distances"]
-        )
-
-        if results and results["ids"] and results["ids"][0]:
-            for i, doc_id in enumerate(results["ids"][0]):
-                if doc_id in seen_ids:
-                    continue
-                seen_ids.add(doc_id)
-                meta = results["metadatas"][0][i] if results["metadatas"] else {}
-                content = results["documents"][0][i] if results["documents"] else ""
-                papers.append({
-                    "id": doc_id,
-                    "title": meta.get("title", doc_id),
-                    "content": content[:8000],
-                    "relevance": 1.0 - (results["distances"][0][i] if results["distances"] else 0),
-                    "type": meta.get("type", "unknown"),
-                })
+        search_results = hybrid_search_bge(keyword, top_k=max_papers * 2)
+        for r in search_results:
+            pid = r["id"]
+            if pid in seen_ids:
+                continue
+            seen_ids.add(pid)
+            metadata = r.get("metadata", {})
+            papers.append({
+                "id": pid,
+                "title": metadata.get("title", pid),
+                "content": r.get("content", "")[:8000],
+                "relevance": min(r.get("final_score", 0.5), 0.99),
+                "type": metadata.get("type", "unknown"),
+            })
+        print(f"  BGE-M3 语义检索: {len(papers)} 个结果")
     except Exception as e:
-        print(f"  ChromaDB 检索失败: {e}")
+        print(f"  BGE-M3 检索失败: {e}")
 
     try:
         from api.dependencies import vault_index

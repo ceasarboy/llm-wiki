@@ -56,6 +56,14 @@ export function postQuery(question: string) {
   })
 }
 
+/** 保存问答到 Wiki */
+export function saveQuery(question: string, answer: string, sources: { id: string; title: string; path: string }[]) {
+  return request<{ success: boolean; path: string; message: string }>('/save-query', {
+    method: 'POST',
+    body: JSON.stringify({ question, answer, sources }),
+  })
+}
+
 /** 知识库搜索 */
 export function searchKnowledge(query: string, type?: string) {
   const params = new URLSearchParams({ q: query })
@@ -298,6 +306,25 @@ export function mergeEntities(keepPage: string, removePage: string) {
 export function deletePDF(filename: string) {
   return request<{ success: boolean; message: string }>(`/pdf/${encodeURIComponent(filename)}`, {
     method: 'DELETE',
+  })
+}
+
+/** 获取Markdown内容 */
+export interface MarkdownContent {
+  filename: string
+  markdown_path: string
+  content: string
+  size: number
+}
+
+export function getMarkdownContent(filename: string) {
+  return request<MarkdownContent>(`/pdf/markdown/${encodeURIComponent(filename)}`)
+}
+
+/** 重新转换PDF */
+export function reconvertPDF(filename: string) {
+  return request<PDFConvertResponse>(`/pdf/reconvert?filename=${encodeURIComponent(filename)}`, {
+    method: 'POST',
   })
 }
 

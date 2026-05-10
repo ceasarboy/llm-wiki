@@ -44,7 +44,7 @@ class VaultIndex:
 
     def _do_scan(self):
         self.pages = {}
-        self.by_type = {"paper": [], "entity": [], "concept": [], "survey": [], "comparison": []}
+        self.by_type = {"paper": [], "entity": [], "concept": [], "survey": [], "comparison": [], "synthesis": [], "faq": [], "exploration": []}
 
         type_map = {
             "papers": "paper",
@@ -52,6 +52,7 @@ class VaultIndex:
             "concepts": "concept",
             "summaries": "synthesis",
             "syntheses": "synthesis",
+            "faq": "faq",
         }
 
         for subdir, type_name in type_map.items():
@@ -101,6 +102,8 @@ class VaultIndex:
                 self.pages[page_id] = page_info
                 if effective_type in self.by_type:
                     self.by_type[effective_type].append(page_id)
+                if type_name == "synthesis":
+                    self.by_type["synthesis"].append(page_id)
 
         self.last_scan = datetime.now().isoformat()
         print(f"Vault 索引构建完成: {len(self.pages)} 个页面")

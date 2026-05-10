@@ -14,7 +14,7 @@ const PLACEHOLDER_PREFIX = '\x00KATEX_'
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-export function renderMarkdown(text: string): string {
+export function renderMarkdown(text: string, articleId?: string): string {
   let processedText = text
   const placeholders: Map<string, string> = new Map()
   let counter = 0
@@ -46,7 +46,8 @@ export function renderMarkdown(text: string): string {
       return `![${alt}](${path})`
     }
     const encodedPath = encodeURIComponent(path.replace(/\\/g, '/'))
-    return `![${alt}](/api/assets?path=${encodedPath})`
+    const docParam = articleId ? `&doc=${encodeURIComponent(articleId)}` : ''
+    return `![${alt}](/api/assets?path=${encodedPath}${docParam})`
   })
 
   processedText = processedText.replace(

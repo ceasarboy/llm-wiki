@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Card, Upload, Table, Button, message, Space, Tag, Modal, Typography } from 'antd'
-import { UploadOutlined, DeleteOutlined, FilePdfOutlined, SyncOutlined, EyeOutlined } from '@ant-design/icons'
+import { Card, Upload, Table, Button, message, Space, Tag, Modal, Typography, Spin } from 'antd'
+import { UploadOutlined, DeleteOutlined, FilePdfOutlined, SyncOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { uploadPDF, getPDFList, convertPDF, deletePDF } from '../services/api'
+import { uploadPDF, getPDFList, convertPDF, deletePDF, getMarkdownContent, reconvertPDF } from '../services/api'
 import type { PDFFile } from '../services/api'
 import { formatDateTime } from '../utils/datetime'
 
@@ -12,6 +12,9 @@ const { Title } = Typography
 export default function ImportPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
+  const [markdownModal, setMarkdownModal] = useState<{ open: boolean; filename: string; content: string; loading: boolean }>({
+    open: false, filename: '', content: '', loading: false,
+  })
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['pdfList', page, pageSize],
@@ -51,6 +54,17 @@ export default function ImportPage() {
     },
   })
 
+  const reconvertMutation = useMutation({
+    mutationFn: (filename: string) => reconvertPDF(filename),
+    onSuccess: () => {
+      message.success('重新转换任务已启动')
+      refetch()
+    },
+    onError: (error: Error) => {
+      message.error(`重新转换失败: ${error.message}`)
+    },
+  })
+
   const handleUpload = (file: File) => {
     uploadMutation.mutate(file)
     return false
@@ -70,6 +84,25 @@ export default function ImportPage() {
       content: `确定要删除 ${filename} 吗？`,
       okType: 'danger',
       onOk: () => deleteMutation.mutate(filename),
+    })
+  }
+
+  const handleViewMarkdown = async (filename: string) => {
+    setMarkdownModal({ open: true, filename, content: '', loading: true })
+    try {
+      const data = await getMarkdownContent(filename)
+      setMarkdownModal({ open: true, filename, content: data.content, loading: false })
+    } catch (error) {
+      message.error(`获取Markdown失败: ${(error as Error).message}`)
+      setMarkdownModal({ open: false, filename: '', content: '', loading: false })
+    }
+  }
+
+  const handleReconvert = (filename: string) => {
+    Modal.confirm({
+      title: '确认重新转换',
+      content: `确定要重新转换 ${filename} 吗？这将覆盖现有的Markdown文件。`,
+      onOk: () => reconvertMutation.mutate(filename),
     })
   }
 
@@ -145,8 +178,17 @@ export default function ImportPage() {
             </Button>
           )}
           {record.status === 'completed' && record.markdown_path && (
-            <Button icon={<EyeOutlined />}>
+            <Button icon={<EyeOutlined />} onClick={() => handleViewMarkdown(record.filename)}>
               查看Markdown
+            </Button>
+          )}
+          {record.status === 'completed' && (
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => handleReconvert(record.filename)}
+              loading={reconvertMutation.isPending}
+            >
+              重新生成
             </Button>
           )}
           <Button
@@ -201,6 +243,36 @@ export default function ImportPage() {
           }}
         />
       </Card>
+
+      <Modal
+        title={markdownModal.filename}
+        open={markdownModal.open}
+        onCancel={() => setMarkdownModal({ open: false, filename: '', content: '', loading: false })}
+        footer={null}
+        width={900}
+        styles={{ body: { maxHeight: '70vh', overflow: 'auto', padding: 24 } }}
+      >
+        {markdownModal.loading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <Spin tip="加载中..." />
+          </div>
+        ) : (
+          <pre style={{
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            fontFamily: 'monospace',
+            fontSize: 13,
+            lineHeight: 1.6,
+            color: 'var(--text-primary)',
+            background: 'var(--bg-elevated)',
+            padding: 16,
+            borderRadius: 8,
+            margin: 0,
+          }}>
+            {markdownModal.content}
+          </pre>
+        )}
+      </Modal>
     </div>
   )
 }

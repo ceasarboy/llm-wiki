@@ -51,10 +51,10 @@ export default function HomePage() {
       {/* Hero Section */}
       <div className="home-hero">
         <Title level={1} style={{ color: 'var(--text-primary)', marginBottom: 12, fontWeight: 700 }}>
-          LLM-Wiki 知识库
+          个人Wiki知识库
         </Title>
         <Text style={{ color: 'var(--text-secondary)', fontSize: 18, display: 'block', marginBottom: 32 }}>
-          智能知识编译系统，让知识可追溯、可复用
+          让知识沉淀、复用、迭代，构建高效、富有生命力的智能知识系统。
         </Text>
         
         {/* Search Box */}
@@ -119,6 +119,24 @@ export default function HomePage() {
                   </Text>
                 </div>
               ))}
+              {hotQueries?.saved?.length ? (
+                <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                  <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
+                    📌 已保存的问答
+                  </Text>
+                  {hotQueries.saved.map((item, i) => (
+                    <div
+                      key={item.id || i}
+                      className="py-2 px-3 cursor-pointer rounded-lg transition-fast hover:bg-tertiary"
+                      onClick={() => navigate(`/knowledge/${encodeURIComponent(item.id)}`)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <Text style={{ color: 'var(--accent)' }}>{item.question}</Text>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </Card>
           </Col>
           <Col xs={24} sm={12}>
